@@ -6,25 +6,13 @@
 
 - 📄 Fetches papers directly from ArXiv using paper ID
 - 🤖 Uses AI (Gemini) to generate video scripts from paper content
-- 🎬 Creates multi-scene videos with text overlays and figures
+- 🎬 Creates multi-scene videos with text overlays
 - 🔊 Generates narration using text-to-speech
 - 📱 Supports both landscape (YouTube) and portrait (Shorts/Reels) formats
 - 🎵 Optional background music support
-- 🖼️ Automatically extracts and includes paper figures
 
 ## Installation
 
-### Option 1: Using the install script (Recommended)
-```bash
-python install_deps.py
-```
-
-### Option 2: Manual installation
-```bash
-pip install -r pyproject.toml
-```
-
-### Option 3: Using uv (if you have it)
 ```bash
 uv sync
 ```
@@ -32,6 +20,7 @@ uv sync
 ## Setup
 
 1. Copy the environment template:
+
 ```bash
 cp .env.template .env
 ```
@@ -41,6 +30,7 @@ cp .env.template .env
 ## Usage
 
 1. Start the Streamlit app:
+
 ```bash
 streamlit run main.py
 ```
