@@ -14,6 +14,18 @@
 - 📱 Supports both landscape (YouTube) and portrait (Shorts/Reels) formats
 - 🎵 Optional background music support
 
+## Upcoming Features
+
+🚀 **Coming Soon:**
+
+- ✏️ **Script Editing Interface** - Review and modify AI-generated scripts before video creation
+- 🖼️ **Automatic Figure Integration** - Smart extraction and placement of paper figures, charts, and diagrams
+- 🎨 **Manual Graphics Upload** - Add custom images, logos, and visual elements to enhance presentations
+- 🎭 **Multiple AI Voices** - Choose from different TTS voices and speaking styles
+- 📊 **Advanced Templates** - Pre-designed video templates for different research fields
+- 🔄 **Batch Processing** - Generate videos for multiple papers simultaneously
+- 🌐 **Multi-language Support** - Generate videos in different languages
+
 ## Installation
 
 ```bash
