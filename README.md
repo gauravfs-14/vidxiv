@@ -2,6 +2,9 @@
 
 🎥 Convert ArXiv research papers into engaging video presentations automatically!
 
+![VidXiv Streamlit UI](/static/streamlit_ui.png)
+*Fig. VidXiv Streamlit UI*
+
 ## Features
 
 - 📄 Fetches papers directly from ArXiv using paper ID
