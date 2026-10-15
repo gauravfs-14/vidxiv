@@ -22,7 +22,7 @@ All file references in props are paths relative to that public dir, used with `s
   "fps": 30,
   "total": 1800,                       // total frames; Composition durationInFrames comes from this via calculateMetadata
   "title": "Paper title",
-  "palette": "paper",                  // "paper" | "ink"  (same palettes as the Claude_Vids explainer-video skill)
+  "look": "studio",                    // "studio" | "night" | "swiss" | "cobalt", see skills/video-taste/SKILL.md
   "captions": true,                    // word-synced captions on or off
   "progressBar": true,
   "music": {"file": "audio/music.wav", "volume": 0.5} | null,
@@ -70,8 +70,10 @@ whitespace-separated token of `text` (same order, same spelling, times may be es
   figures, used for `npm run studio` and for visual QA. `npm run check` runs typecheck and renders still frames of
   the sample in all three formats.
 
-## Look
+## Looks
 
-Editorial paper look from the `explainer-video` skill (`~/.agents/skills/explainer-video`): warm paper background with grain,
-Instrument Serif headlines, Inter Tight body, JetBrains Mono for formulas and code, Caveat for rare handwritten notes,
-rough-notation hand-drawn circles and underlines, one accent colour per concept, no neon, no glitch, no shake.
+`props.look` selects one of four looks, defined in `skills/video-taste/SKILL.md` (read it, including the banned list).
+The engine keeps one theme object per look: colours, fonts, corner radius, background treatment, caption style, annotation style (crisp, never hand-drawn).
+Never use a cream or paper background, serif display type, Inter as display type, glow, grain, light leaks, handwriting or wobble.
+Kickers show only when `line.kicker` is set, and the engine also hides a kicker that repeats the previous scene's.
+Scenes vary composition per scene type and per format instead of centering one card: see the taste skill's composition rules.

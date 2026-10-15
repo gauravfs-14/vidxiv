@@ -10,7 +10,7 @@ import json
 import re
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 TINTS = ("", "accent", "teal", "rose", "blue", "mustard")
@@ -162,11 +162,23 @@ class Line(Base):
         return v
 
 
+LOOKS = ("studio", "night", "swiss", "cobalt")
+LEGACY_LOOKS = {"paper": "studio", "ink": "night"}
+
+
 class Storyboard(Base):
     title: str = Field(max_length=160)
     source: str | None = Field(default=None, max_length=160)  # "arXiv:2401.06015" or a filename
-    palette: Literal["paper", "ink"] = "paper"
+    look: Literal["studio", "night", "swiss", "cobalt"] = "studio"
     lines: list[Line] = Field(min_length=1, max_length=60)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy(cls, v):
+        if isinstance(v, dict) and "palette" in v:  # storyboards written before looks existed
+            v = dict(v)
+            v["look"] = LEGACY_LOOKS.get(v.pop("palette"), "studio")
+        return v
 
 
 _adapter = TypeAdapter(Storyboard)

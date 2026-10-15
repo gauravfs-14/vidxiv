@@ -91,7 +91,7 @@ def cmd_install_skills(a) -> int:
     from . import config
 
     targets = [Path.home() / ".claude" / "skills", Path.home() / ".agents" / "skills"]
-    for name in ("paper-video", "unslop"):
+    for name in ("paper-video", "video-taste", "unslop"):
         for t in targets:
             dest = t / name
             if dest.exists() and not a.force:
@@ -119,7 +119,7 @@ def cmd_make(a) -> int:
             return 2
         job = jobs.create({"type": "arxiv", "id": aid, "url": f"https://arxiv.org/abs/{aid}"}, f"arXiv:{aid}")
         pipeline.start_ingest(job)
-    job.update(lambda s: s["brief"].update(length=a.length, formats=a.format, palette=a.palette, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
+    job.update(lambda s: s["brief"].update(length=a.length, formats=a.format, look=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
     if a.voice:
         job.update(lambda s: s["narration"].update(voice=a.voice))
 
@@ -174,7 +174,7 @@ def main(argv: list[str] | None = None) -> int:
     st = sub.add_parser("setup", help="install the video engine and sound effects")
     st.add_argument("--voice", action="store_true", help="also download the Kokoro voice model")
     st.set_defaults(fn=cmd_setup)
-    k = sub.add_parser("install-skills", help="copy the paper-video and unslop skills into ~/.claude/skills and ~/.agents/skills")
+    k = sub.add_parser("install-skills", help="copy the paper-video, video-taste and unslop skills into ~/.claude/skills and ~/.agents/skills")
     k.add_argument("--force", action="store_true")
     k.set_defaults(fn=cmd_install_skills)
     m = sub.add_parser("make", help="make a video without the web app")
@@ -183,7 +183,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--model", default="")
     m.add_argument("--length", default="short", choices=["short", "medium", "long"])
     m.add_argument("--format", action="append", default=None, choices=["Vertical", "Landscape", "Square"])
-    m.add_argument("--palette", default="paper", choices=["paper", "ink"])
+    m.add_argument("--look", default="auto", choices=["auto", "studio", "night", "swiss", "cobalt"])
     m.add_argument("--music", default="warm", choices=["warm", "bright", "calm", "night", "none"])
     m.add_argument("--voice", default="")
     m.add_argument("--script", help="text file with your own narration")

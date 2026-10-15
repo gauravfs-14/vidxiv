@@ -82,6 +82,10 @@ def split_script(text: str, max_chars: int = 230, min_chars: int = 60) -> list[s
 
 # ---------------------------------------------------------------- no-agent storyboard
 
+def _look(look: str) -> str:
+    return look if look in schema.LOOKS else "studio"
+
+
 def _sentences(text: str) -> list[str]:
     return [s.strip() for s in re.split(r"(?<=[.!?])\s+", " ".join(text.split())) if len(s.strip()) > 25]
 
@@ -91,7 +95,7 @@ def _short(s: str, n: int = 90) -> str:
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0]
 
 
-def fallback_storyboard(paper: dict, figures: list[dict], length: str = "short", palette: str = "paper") -> dict:
+def fallback_storyboard(paper: dict, figures: list[dict], length: str = "short", look: str = "auto") -> dict:
     """A plain but valid storyboard from the abstract and figure captions. Used when no agent CLI is installed."""
     title = paper.get("title") or "Untitled paper"
     authors = paper.get("authors") or []
@@ -115,10 +119,10 @@ def fallback_storyboard(paper: dict, figures: list[dict], length: str = "short",
         add(text, {"type": "figure", "figure": fig["id"], "caption": _short(fig.get("label", ""), 40) or None}, "Figure")
     closing = "The full paper is on arXiv, linked below." if "arxiv" in meta else "That is the paper in brief. The full text has the details."
     add(closing, {"type": "outro", "headline": "Read the paper", "takeaway": _short(title, 100), "cta": "Full text on arXiv" if "arxiv" in meta else None, "link": meta or None})
-    return {"title": title, "source": meta or None, "palette": palette, "lines": lines}
+    return {"title": title, "source": meta or None, "look": _look(look), "lines": lines}
 
 
-def assign_scenes(texts: list[str], paper: dict, figures: list[dict], palette: str = "paper") -> dict:
+def assign_scenes(texts: list[str], paper: dict, figures: list[dict], look: str = "auto") -> dict:
     """Storyboard for user-written lines when no agent is available: opening hook, figures spread through, closing outro."""
     n = len(texts)
     fig_slots = {}
@@ -139,7 +143,7 @@ def assign_scenes(texts: list[str], paper: dict, figures: list[dict], palette: s
         else:
             sc = {"type": "concept", "heading": _short(t, 60), "body": None, "items": []}
         lines.append({"text": t, "scene": sc})
-    return {"title": paper.get("title") or "Untitled", "source": (paper.get("url") or "").replace("https://", "") or None, "palette": palette, "lines": lines}
+    return {"title": paper.get("title") or "Untitled", "source": (paper.get("url") or "").replace("https://", "") or None, "look": _look(look), "lines": lines}
 
 
 def prune(obj):

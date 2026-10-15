@@ -1,7 +1,7 @@
 {
   "title": "Attention Is All You Need",
   "source": "arXiv:1706.03762",
-  "palette": "paper",
+  "look": "studio",
   "lines": [
     {
       "text": "In 2017, a translation model with no recurrence beat every system before it.",

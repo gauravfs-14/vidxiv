@@ -114,7 +114,7 @@ def build_props(job: Job, estimated_ok: bool) -> tuple[dict, dict[int, Path]]:
                for fid, f in figs.items() if fid in used or len(figs) <= 12}
     music_mood = brief.get("music", "warm")
     props = {
-        "fps": config.FPS, "total": total, "title": sb["title"], "palette": brief.get("palette", sb.get("palette", "paper")),
+        "fps": config.FPS, "total": total, "title": sb["title"], "look": sb.get("look", "studio") if brief.get("look", "auto") == "auto" else brief["look"],
         "captions": bool(brief.get("captions", True)), "progressBar": True,
         "music": None, "sfx": [], "figures": figures, "lines": lines, "scenes": scenes,
         "_musicMood": music_mood,

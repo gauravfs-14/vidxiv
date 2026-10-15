@@ -296,7 +296,7 @@ def make_preview(job_id: str):
 class RenderBody(BaseModel):
     formats: list[str] | None = None
     captions: bool | None = None
-    palette: str | None = None
+    look: str | None = None
     music: str | None = None
 
 

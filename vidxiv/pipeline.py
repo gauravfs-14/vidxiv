@@ -51,16 +51,17 @@ def start_script(job: Job, agent: str, model: str, mode: str, text: str = "") ->
                 raise RuntimeError(f"The {agent} CLI was not found on this machine")
             job.log("script", "No agent CLI in use, building scenes with simple rules")
             if fixed is None:
-                sb = script.fallback_storyboard(paper_info, figures, brief.get("length", "short"), brief.get("palette", "paper"))
+                sb = script.fallback_storyboard(paper_info, figures, brief.get("length", "short"), brief.get("look", "auto"))
             else:
-                sb = script.assign_scenes(fixed, paper_info, figures, brief.get("palette", "paper"))
+                sb = script.assign_scenes(fixed, paper_info, figures, brief.get("look", "auto"))
             sb, problems = agents.finalize(sb, {f["id"] for f in figures}, fixed)
             if problems:
                 raise RuntimeError("; ".join(problems[:3]))
             job.storyboard_path.write_text(json.dumps(sb, indent=2))
         else:
             sb = agents.generate_storyboard(job, chosen, model, fixed)
-        sb["palette"] = brief.get("palette", sb.get("palette", "paper"))
+        if brief.get("look", "auto") != "auto":
+            sb["look"] = brief["look"]
         job.storyboard_path.write_text(json.dumps(sb, indent=2))
         job.patch(title=sb["title"] or job.load()["title"])
         job.progress("script", 1, f"{len(sb['lines'])} lines written")
