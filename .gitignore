@@ -1,13 +1,21 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
 build/
 dist/
 wheels/
 *.egg-info
-
-# Virtual environments
 .venv
 .env
-**.mp3
-**.mp4
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# vidxiv runtime data (jobs, models, downloaded audio)
+workspace/
+
+# Remotion engine
+engine/node_modules/
+engine/out/
+engine/.remotion/
