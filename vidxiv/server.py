@@ -208,6 +208,9 @@ def make_script(job_id: str, body: ScriptBody):
         raise RuntimeError("The paper has not finished loading")
     if body.mode not in ("generate", "provided", "transcript"):
         raise ValueError("Unknown script mode")
+    chosen = agents.pick(body.agent)
+    if body.model and (chosen is None or not agents.valid_model(chosen, body.model)):
+        raise ValueError("That model is not offered by the selected agent. Pick one from the list.")
     job.update(lambda s: s["brief"].update(agent=body.agent, model=body.model, scriptMode=body.mode, providedText=body.text))
     pipeline.start_script(job, body.agent, body.model, body.mode, body.text)
     return view(job)

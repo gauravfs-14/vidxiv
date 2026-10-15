@@ -20,18 +20,74 @@ AGENT_TIMEOUT = 20 * 60
 ATTEMPTS = 3
 
 
+_detect_cache: tuple[float, dict] | None = None
+
+
 def detect() -> dict:
+    """Installed agent CLIs with versions and models. Cached for 30 seconds because the UI polls it."""
+    import time
+
+    global _detect_cache
+    if _detect_cache and time.time() - _detect_cache[0] < 30:
+        return _detect_cache[1]
     out = {}
     for name in ("claude", "codex"):
         path = shutil.which(name)
-        info = {"found": bool(path), "path": path, "version": None}
+        info = {"found": bool(path), "path": path, "version": None, "models": []}
         if path:
             try:
                 info["version"] = subprocess.run([path, "--version"], capture_output=True, text=True, timeout=15).stdout.strip().splitlines()[0]
             except Exception:  # noqa: BLE001
                 pass
+            info["models"] = models(name, path)
         out[name] = info
+    _detect_cache = (time.time(), out)
     return out
+
+
+_models_cache: dict[str, tuple[float, list[dict]]] = {}
+DEFAULT_MODEL = {"id": "", "label": "Default", "note": "The model the CLI uses for your account"}
+
+
+def _claude_models(path: str) -> list[dict]:
+    """Claude Code has no list command. Its --model help names the aliases it accepts, so read them from there."""
+    try:
+        text = subprocess.run([path, "--help"], capture_output=True, text=True, timeout=15).stdout
+    except Exception:  # noqa: BLE001
+        return [DEFAULT_MODEL]
+    block = re.search(r"--model <model>(.*?)(?=\n\s+-{1,2}[a-z])", text, re.S)
+    aliases = re.findall(r"'([a-z]+)'", block.group(1)) if block else []
+    names = {"fable": "Fable", "opus": "Opus", "sonnet": "Sonnet", "haiku": "Haiku"}
+    return [DEFAULT_MODEL] + [{"id": a, "label": f"{names.get(a, a.capitalize())} (latest)", "note": f"Alias for the newest {a} model"} for a in dict.fromkeys(aliases)]
+
+
+def _codex_models(path: str) -> list[dict]:
+    try:
+        raw = subprocess.run([path, "debug", "models"], capture_output=True, text=True, timeout=30).stdout
+        catalog = json.loads(raw).get("models", [])
+    except Exception:  # noqa: BLE001
+        return [DEFAULT_MODEL]
+    listed = sorted((m for m in catalog if m.get("visibility") == "list"), key=lambda m: m.get("priority", 99))
+    return [DEFAULT_MODEL] + [{"id": m["slug"], "label": m.get("display_name") or m["slug"], "note": m.get("description", "")} for m in listed]
+
+
+def models(name: str, path: str | None = None) -> list[dict]:
+    """Models the installed CLI offers, read from the CLI itself. Cached for ten minutes."""
+    import time
+
+    hit = _models_cache.get(name)
+    if hit and time.time() - hit[0] < 600:
+        return hit[1]
+    path = path or shutil.which(name)
+    if not path:
+        return []
+    out = _claude_models(path) if name == "claude" else _codex_models(path)
+    _models_cache[name] = (time.time(), out)
+    return out
+
+
+def valid_model(agent: str, model: str) -> bool:
+    return not model or any(m["id"] == model for m in models(agent))
 
 
 def pick(preferred: str = "auto") -> str | None:

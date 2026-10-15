@@ -108,6 +108,14 @@ def cmd_make(a) -> int:
     """Headless: paper in, MP4 out."""
     from . import jobs, paper, pipeline, voice
 
+    from . import agents
+
+    if a.model:
+        chosen = agents.pick(a.agent)
+        if chosen is None or not agents.valid_model(chosen, a.model):
+            offered = ", ".join(m["id"] for m in agents.models(chosen) if m["id"]) if chosen else "none"
+            print(f"Model '{a.model}' is not offered by {chosen or 'any installed agent'}. Available: {offered}", file=sys.stderr)
+            return 2
     jobs.recover_interrupted()
     if a.seconds > 300:
         print(f"Note: a {a.seconds // 60} minute video makes the agent read the whole paper and write about {round(a.seconds / 5.2)} lines. This uses a lot of tokens.", file=sys.stderr)
