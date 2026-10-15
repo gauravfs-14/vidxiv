@@ -1,22 +1,31 @@
 import { h, icon, replace, debounce, fmtDuration, fmtSize } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { chip, progressBar, LogFeed, field, toast, errorMessage } from "../ui.js";
+import { progressBar, LogFeed, field, toast, errorMessage, emptyState } from "../ui.js";
 import { installEngineHint } from "./script.js";
 
 const FORMATS = [
-  { value: "Vertical", ratio: "9 / 16", name: "Vertical", sub: "9:16, Shorts and Reels" },
-  { value: "Landscape", ratio: "16 / 9", name: "Landscape", sub: "16:9, YouTube" },
-  { value: "Square", ratio: "1 / 1", name: "Square", sub: "1:1, feeds" },
+  { value: "Vertical", ratio: "9 / 16", name: "Vertical", sub: "9:16 for Shorts and Reels" },
+  { value: "Landscape", ratio: "16 / 9", name: "Landscape", sub: "16:9 for YouTube" },
+  { value: "Square", ratio: "1 / 1", name: "Square", sub: "1:1 for feeds" },
 ];
-const PALETTES = [
-  { value: "paper", name: "Paper", sub: "Warm and light" },
-  { value: "ink", name: "Ink", sub: "Dark slate" },
+const LOOKS = [
+  { value: "auto", name: "Auto", suits: "The script agent picks the look that suits the paper." },
+  { value: "studio", name: "Studio", suits: "General, machine learning and software." },
+  { value: "night", name: "Night", suits: "Systems, security and dense results." },
+  { value: "swiss", name: "Swiss", suits: "Math, physics and theory." },
+  { value: "cobalt", name: "Cobalt", suits: "Short vertical videos." },
 ];
 const MUSIC = [["warm", "Warm"], ["bright", "Bright"], ["calm", "Calm"], ["night", "Night"], ["none", "No music"]];
 
+/** CSS-drawn preview of a look: ground, headline, secondary line and accent. */
+function swatch(look) {
+  if (look === "auto") return h("span.swatch.auto", { "aria-hidden": "true" }, h("i.s-studio"), h("i.s-night"), h("i.s-swiss"), h("i.s-cobalt"));
+  return h(`span.swatch.${look}`, { "aria-hidden": "true" }, h("b", "Aa"), h("u"), h("i"));
+}
+
 export function createVideo({ store, sec }) {
-  const cfg = { formats: ["Vertical"], palette: "paper", captions: true, music: "warm" };
+  const cfg = { formats: ["Vertical"], look: "auto", captions: true, music: "warm" };
   let init = false, dirty = false;
 
   const save = debounce(async () => {
@@ -30,21 +39,24 @@ export function createVideo({ store, sec }) {
       cfg.formats = fmtInputs.filter((i) => i.checked).map((i) => i.value);
       changed();
     } });
-    input.el = h("label.fmt", input,
+    input.el = h("label.opt.fmt", input,
       h("span.glyph-wrap", h("span.glyph", { style: `aspect-ratio:${f.ratio}` })),
-      h("span.fmt-text", h("span.fmt-name", f.name), h("span.fmt-sub", f.sub)));
+      h("span.opt-text", h("span.opt-name", f.name), h("span.opt-sub", f.sub)),
+      h("span.opt-check", icon("check", 14)));
     return input;
   });
-  const fmtGroup = h("fieldset.group", h("legend", "Formats"), h("div.fmt-row", fmtInputs.map((i) => i.el)));
+  const fmtGroup = h("fieldset.group", h("legend", "Formats"), h("div.opt-list", fmtInputs.map((i) => i.el)));
   const fmtErr = h("p.field-error", { role: "alert", hidden: true }, "Choose at least one format to render.");
 
-  // palette
-  const palInputs = PALETTES.map((p) => {
-    const input = h("input", { type: "radio", name: "palette", value: p.value, onchange: () => { cfg.palette = p.value; changed(); } });
-    input.el = h("label.pal", input, h(`span.swatch.${p.value}`, h("i"), h("b")), h("span.fmt-text", h("span.fmt-name", p.name), h("span.fmt-sub", p.sub)));
+  // look
+  const lookInputs = LOOKS.map((l) => {
+    const input = h("input", { type: "radio", name: "look", value: l.value, onchange: () => { cfg.look = l.value; changed(); } });
+    input.el = h("label.opt.look", input, swatch(l.value),
+      h("span.opt-text", h("span.opt-name", l.name), h("span.opt-sub", l.suits)),
+      h("span.opt-check", icon("check", 14)));
     return input;
   });
-  const palGroup = h("fieldset.group", h("legend", "Palette"), h("div.pal-row", palInputs.map((i) => i.el)));
+  const lookGroup = h("fieldset.group", h("legend", "Look"), h("div.opt-list", lookInputs.map((i) => i.el)));
 
   // captions, music
   const captions = h("input", { type: "checkbox", role: "switch", onchange: () => { cfg.captions = captions.checked; changed(); } });
@@ -53,8 +65,8 @@ export function createVideo({ store, sec }) {
 
   // run
   const bar = progressBar();
-  const msg = h("p.small.muted", { "aria-live": "polite" });
-  const btn = h("button.btn.primary.lg", { type: "button", onclick: () => render() }, icon("film-strip", 18), "Render video");
+  const msg = h("p.progress-msg", { "aria-live": "polite" });
+  const btn = h("button.btn.primary.lg", { type: "button", onclick: () => render() }, icon("film-strip", 16), "Render video");
   const why = h("p.hint");
   const cancel = h("button.btn.small", { type: "button", onclick: async () => { try { await api.cancel(store.id); store.bump(); } catch (e) { toast(errorMessage(e), "error"); } } }, icon("x", 14), "Cancel");
   const progress = h("div.progress-row", { hidden: true }, bar, cancel);
@@ -63,6 +75,7 @@ export function createVideo({ store, sec }) {
   const log = h("details.disclosure", { hidden: true }, h("summary", "Render log"), feed.el);
   const outputs = h("div.outputs");
   const hintSlot = h("div.hint-slot");
+  const empty = h("div", emptyState("No video yet", "Choose formats and a look, then render. Lines without narration are narrated first."));
 
   async function render() {
     save.cancel();
@@ -75,13 +88,12 @@ export function createVideo({ store, sec }) {
     paint();
   }
 
-  sec.body.append(
-    h("div.video-opts",
-      h("div.opt-formats", fmtGroup, fmtErr),
-      palGroup,
-      h("div.opt-row", capLabel, field("Music", music))),
-    h("div.render-row", btn, h("div.render-notes", h("p.hint", "Lines without narration, or with changed text, are narrated automatically before rendering."), why, hintSlot)),
-    progress, msg, errBox, log, outputs);
+  sec.body.append(h("div.video-grid",
+    h("div.video-form",
+      fmtGroup, fmtErr, lookGroup,
+      h("div.opt-row", capLabel, field("Music", music)),
+      h("div.render-row", btn, why, hintSlot)),
+    h("div.video-results", progress, msg, errBox, log, empty, outputs)));
 
   let lastJob = null;
   function paint() { if (lastJob) update(lastJob); }
@@ -94,16 +106,16 @@ export function createVideo({ store, sec }) {
       Object.assign(cfg, pick(job.brief));
     }
     fmtInputs.forEach((i) => (i.checked = cfg.formats.includes(i.value)));
-    palInputs.forEach((i) => (i.checked = i.value === cfg.palette));
+    lookInputs.forEach((i) => (i.checked = i.value === cfg.look));
     captions.checked = cfg.captions;
     if (document.activeElement !== music) music.value = cfg.music;
 
     const st = job.stages.render;
     const running = st.state === "running";
     const has = !!job.storyboard;
-    const done = job.outputs.length > 0 && st.state !== "running";
-    sec.setChip(chip(running ? "running" : st.state === "error" ? "error" : done ? "done" : "idle", done && !running ? `${job.outputs.length} video${job.outputs.length === 1 ? "" : "s"}` : undefined, st.progress));
-    sec.setSummary(done ? job.outputs.map((o) => o.format).join(", ") : "");
+    const done = job.outputs.length > 0 && !running;
+    sec.setStatus(running ? "running" : st.state === "error" ? "error" : done ? "done" : "idle",
+      running ? "Rendering" : st.state === "error" ? "Failed" : done ? `${job.outputs.length} video${job.outputs.length === 1 ? "" : "s"}` : has ? "Ready" : "Waiting", st.progress);
 
     const noFormat = cfg.formats.length === 0;
     fmtErr.hidden = !noFormat;
@@ -121,6 +133,7 @@ export function createVideo({ store, sec }) {
     if (st.state === "error") replace(errBox, h("p", h("strong", "The video was not rendered. "), st.error || st.message, " Open the render log for details, fix the cause, then render again."));
     log.hidden = st.state === "idle" && !feed.lines.length;
     feed.sync(running, st.started);
+    empty.hidden = job.outputs.length > 0 || running || st.state === "error";
 
     const sig = JSON.stringify(job.outputs);
     if (sig !== outSig) {
@@ -132,13 +145,13 @@ export function createVideo({ store, sec }) {
           h("div.out-media", video),
           h("div.out-info",
             h("h3.out-name", o.format),
-            h("p.small.muted", [fmt?.sub, fmtDuration(o.seconds), fmtSize(o.size)].filter(Boolean).join(", ")),
-            h("a.btn", { href: `${o.url}?download=1`, download: "" }, icon("download-simple", 16), "Download")));
+            h("p.out-meta", [fmt?.sub, fmtDuration(o.seconds), fmtSize(o.size)].filter(Boolean).join(", ")),
+            h("a.btn.small", { href: `${o.url}?download=1`, download: "" }, icon("download-simple", 14), "Download")));
       }));
     }
   }
 
   const unsubEnv = env.subscribe(() => paint());
-  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], palette: b.palette || "paper", captions: b.captions !== false, music: b.music || "warm" });
+  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], look: LOOKS.some((l) => l.value === b.look) ? b.look : "auto", captions: b.captions !== false, music: b.music || "warm" });
   return { update, destroy() { feed.destroy(); save.cancel(); unsubEnv(); } };
 }

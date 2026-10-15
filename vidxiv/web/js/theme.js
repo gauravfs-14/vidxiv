@@ -1,24 +1,31 @@
 const KEY = "vidxiv-theme";
 const mq = window.matchMedia("(prefers-color-scheme: dark)");
 
-export function currentTheme() {
-  return document.documentElement.dataset.theme || (mq.matches ? "dark" : "light");
+/** "system", "light" or "dark": what the user chose. */
+export function getMode() {
+  const v = localStorage.getItem(KEY);
+  return v === "light" || v === "dark" ? v : "system";
 }
 
-export function applyTheme(t) {
+export function currentTheme() {
+  const m = getMode();
+  return m === "system" ? (mq.matches ? "dark" : "light") : m;
+}
+
+function apply() {
+  const t = currentTheme();
   document.documentElement.dataset.theme = t;
   document.documentElement.style.colorScheme = t;
+  window.dispatchEvent(new Event("vidxiv-theme"));
+}
+
+export function setMode(mode) {
+  if (mode === "system") localStorage.removeItem(KEY);
+  else localStorage.setItem(KEY, mode);
+  apply();
 }
 
 export function initTheme() {
-  const saved = localStorage.getItem(KEY);
-  applyTheme(saved || (mq.matches ? "dark" : "light"));
-  mq.addEventListener("change", () => { if (!localStorage.getItem(KEY)) applyTheme(mq.matches ? "dark" : "light"); });
-}
-
-export function toggleTheme() {
-  const next = currentTheme() === "dark" ? "light" : "dark";
-  localStorage.setItem(KEY, next);
-  applyTheme(next);
-  return next;
+  apply();
+  mq.addEventListener("change", () => { if (getMode() === "system") apply(); });
 }

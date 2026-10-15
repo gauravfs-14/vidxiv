@@ -14,7 +14,7 @@ export class StoryboardEditor {
   constructor({ store }) {
     this.store = store;
     this.rows = [];
-    this.meta = { title: "", palette: "paper" };
+    this.meta = { title: "" }; // everything on the storyboard except `lines`, so unknown top-level keys survive a save
     this.serverJson = "";
     this.pending = null;
     this.dirty = false;
@@ -31,11 +31,17 @@ export class StoryboardEditor {
     this.list = h("ol.lines");
     this.empty = h("p.empty", { hidden: true }, "The script has no lines.");
     this.save = debounce(() => this.persist(), SAVE_DELAY);
+    this.tools = h("div.editor-tools");
+    this.slot = h("div.editor-slot");
+    this.count = h("span.editor-count");
+    this.addEnd = h("button.btn.ghost.small.add-end", { type: "button", onclick: () => this.addBelow(this.rows[this.rows.length - 1]) }, icon("plus", 14), "Add line");
     this.el = h("div.editor", { hidden: true },
       h("div.editor-bar",
-        h("label.editor-title", h("span", "Video title"), this.titleInput),
-        this.status),
-      this.general, this.list, this.empty);
+        h("label.editor-title", h("span.sr-only", "Video title"), this.titleInput),
+        this.status, this.tools),
+      this.general, this.slot,
+      h("div.lines-head", { "aria-hidden": "true" }, h("span", "Line"), h("span", "Scene"), h("span", "Narration")),
+      this.list, this.empty, this.addEnd);
     this.el.addEventListener("focusout", () => setTimeout(() => this.adoptPending(), 0));
     window.addEventListener("beforeunload", (e) => { if (this.dirty) { e.preventDefault(); e.returnValue = ""; } });
   }
@@ -66,7 +72,8 @@ export class StoryboardEditor {
     const { sb, json } = this.pending;
     this.pending = null;
     this.serverJson = json;
-    this.meta = { title: sb.title, source: sb.source, palette: sb.palette };
+    const { lines: _lines, ...meta } = structuredClone(sb);
+    this.meta = meta;
     if (document.activeElement !== this.titleInput) this.titleInput.value = sb.title || "";
     this.problems.clear();
     this.rows = sb.lines.map((line) => ({ id: ++rowUid, line: structuredClone(line) }));
@@ -95,8 +102,7 @@ export class StoryboardEditor {
   }
 
   payload() {
-    const { title, source, palette } = this.meta;
-    return { title, ...(source ? { source } : {}), palette, lines: this.rows.map((r) => r.line) };
+    return { ...this.meta, lines: this.rows.map((r) => r.line) };
   }
 
   async persist() {
@@ -153,6 +159,8 @@ export class StoryboardEditor {
   layout() {
     replace(this.list, this.rows.map((r) => r.el));
     this.empty.hidden = this.rows.length > 0;
+    this.addEnd.hidden = this.rows.length === 0;
+    this.count.textContent = `${this.rows.length} line${this.rows.length === 1 ? "" : "s"}`;
     this.renumber();
     requestAnimationFrame(() => this.refit());
   }
@@ -170,6 +178,7 @@ export class StoryboardEditor {
       r.refs.up.setAttribute("aria-label", `Move line ${k} up`);
       r.refs.down.setAttribute("aria-label", `Move line ${k} down`);
       r.refs.add.setAttribute("aria-label", `Add a line below line ${k}`);
+      r.refs.more.setAttribute("aria-label", `${r.refs.detail.hidden ? "Show" : "Hide"} scene fields for line ${k}`);
       r.refs.del.setAttribute("aria-label", `Delete line ${k}`);
     });
     this.renderNotes();
@@ -192,40 +201,61 @@ export class StoryboardEditor {
   buildRow(r) {
     const refs = {};
     r.refs = refs;
-    refs.idx = h("span.line-idx.mono");
+    refs.idx = h("span.line-idx");
     refs.type = h("select.type-select", { onchange: () => this.changeType(r, refs.type.value) },
       SCENE_TYPES.map((t) => h("option", { value: t, disabled: t === "figure" && !this.figures.length, title: t === "figure" && !this.figures.length ? "This paper has no extracted figures" : undefined }, SCENES[t].label)));
-    const act = (name, ic, fn) => (refs[name] = h("button.icon-btn", { type: "button", onclick: fn }, icon(ic)));
+    const act = (name, ic, fn) => (refs[name] = h("button.icon-btn", { type: "button", onclick: fn }, icon(ic, 15)));
     refs.text = h("textarea.narration", { rows: 1, maxLength: 420, spellcheck: true, value: r.line.text, oninput: () => {
       r.line.text = refs.text.value;
       autosize(refs.text);
       refs.count.textContent = refs.text.value.length > 340 ? `${refs.text.value.length} of 420` : "";
       this.touch();
     } });
-    refs.count = h("span.count.mono.muted");
+    refs.count = h("span.count");
     refs.notes = h("div.line-notes", { hidden: true });
     refs.fields = h("div.scene-fields");
+    refs.peek = h("p.line-peek");
     refs.json = h("textarea.json", { rows: 6, spellcheck: false, "aria-label": "Line JSON", oninput: () => this.jsonInput(r) });
     refs.jsonErr = h("p.note.err", { hidden: true });
+    refs.more = h("button.icon-btn.more", { type: "button", "aria-expanded": "false", onclick: () => this.toggle(r) }, icon("caret-down", 15));
+    refs.detail = h("div.line-detail", { id: `ld-${r.id}`, hidden: true },
+      refs.fields,
+      h("details.json-edit", { ontoggle: (e) => { if (e.target.open) autosize(refs.json); } },
+        h("summary", "Edit as JSON"),
+        h("p.hint", "Scene, highlight words, kicker and gapAfter for this line. The narration is edited above."),
+        refs.json, refs.jsonErr));
+    refs.more.setAttribute("aria-controls", `ld-${r.id}`);
     r.el = h("li.line", { dataset: { id: r.id } },
-      h("div.line-gutter", refs.idx),
-      h("div.line-main",
-        h("div.line-head", h("span.type-wrap", { dataset: { tint: SCENES[r.line.scene.type]?.tint || "ink" } }, refs.type, icon("caret-down", 12)),
-          h("div.line-actions",
-            act("up", "arrow-up", () => this.move(r, -1)),
-            act("down", "arrow-down", () => this.move(r, 1)),
-            act("add", "plus", () => this.addBelow(r)),
-            act("del", "trash", () => this.remove(r)))),
-        h("div.narration-wrap", refs.text, refs.count),
-        refs.notes,
-        refs.fields,
-        h("details.json-edit", { ontoggle: (e) => { if (e.target.open) autosize(refs.json); } },
-          h("summary", "Edit as JSON"),
-          h("p.hint", "Scene, highlight words, kicker and gapAfter for this line. The narration is edited above."),
-          refs.json, refs.jsonErr)));
+      refs.idx,
+      h("span.type-wrap", { dataset: { tint: SCENES[r.line.scene.type]?.tint || "ink" } }, refs.type, icon("caret-down", 11)),
+      h("div.line-main", refs.text, refs.count, refs.peek, refs.notes),
+      h("div.line-actions",
+        act("up", "arrow-up", () => this.move(r, -1)),
+        act("down", "arrow-down", () => this.move(r, 1)),
+        act("add", "plus", () => this.addBelow(r)),
+        act("del", "trash", () => this.remove(r)),
+        refs.more),
+      refs.detail);
     refs.type.value = SCENES[r.line.scene.type] ? r.line.scene.type : "concept";
     this.buildFields(r);
     this.writeJson(r);
+  }
+
+  toggle(r, open = r.refs.detail.hidden) {
+    r.refs.detail.hidden = !open;
+    r.refs.more.setAttribute("aria-expanded", String(open));
+    r.el.classList.toggle("open", open);
+    r.refs.more.setAttribute("aria-label", `${open ? "Hide" : "Show"} scene fields for line ${this.rows.indexOf(r) + 1}`);
+    if (open) r.refs.fields.querySelectorAll("textarea").forEach(autosize);
+  }
+
+  /** One muted line under the narration with the main on-screen text of the scene. */
+  peek(r) {
+    const scene = r.line.scene;
+    const cfg = SCENES[scene.type];
+    const first = cfg?.fields.map((f) => getPath(scene, f.path)).find((v) => typeof v === "string" && v.trim());
+    r.refs.peek.textContent = first ? `On screen: ${first}` : cfg?.figure && scene.figure ? "On screen: figure" : "";
+    r.refs.peek.hidden = !r.refs.peek.textContent;
   }
 
   buildFields(r) {
@@ -241,6 +271,7 @@ export class StoryboardEditor {
           setPath(scene, f.path, el.value, f.required);
           if (long) autosize(el);
           this.writeJson(r);
+          this.peek(r);
           this.touch();
         } });
       return h("label.sf", { style: `grid-column: span ${f.span || 6}` }, h("span", f.label), el);
@@ -250,6 +281,7 @@ export class StoryboardEditor {
     const note = cfg.note?.(scene);
     if (note) nodes.push(h("p.hint.scene-note", note));
     replace(r.refs.fields, nodes);
+    this.peek(r);
     requestAnimationFrame(() => r.refs.fields.querySelectorAll("textarea").forEach(autosize));
   }
 
@@ -280,6 +312,7 @@ export class StoryboardEditor {
     const old = r.line.scene;
     r.line.scene = defaultScene(type, old, r.line.text, this.ctx);
     r.el.querySelector(".type-wrap").dataset.tint = SCENES[type].tint;
+    this.toggle(r, true);
     this.buildFields(r);
     this.writeJson(r);
     this.touch();
@@ -320,7 +353,7 @@ export class StoryboardEditor {
   warnRecordings() {
     const clips = this.store.job?.narration?.clips || {};
     if (Object.values(clips).some((c) => c.source === "user" || c.userUrl)) {
-      toast("Recordings are tied to line numbers. Check the Narration section after moving or deleting lines.", "info", 8000);
+      toast("Recordings are tied to line numbers. Check the Narration stage after moving or deleting lines.", "info", 8000);
     }
   }
 

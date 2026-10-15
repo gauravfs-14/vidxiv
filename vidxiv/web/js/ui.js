@@ -1,5 +1,6 @@
 import { h, icon, replace, nextId } from "./dom.js";
 import { api } from "./api.js";
+import { getMode, setMode } from "./theme.js";
 
 // ---------------------------------------------------------------- toasts
 
@@ -125,11 +126,36 @@ export function progressBar() {
 
 export const STATE_LABEL = { idle: "Not started", running: "Running", done: "Done", error: "Failed" };
 
-/** Status chip. kind: idle | running | done | error. */
+/** Small status glyph. Carries real state only: idle ring, spinner, check, warning. */
+export function statusMark(kind) {
+  const ic = kind === "running" ? icon("circle-notch", 14) : kind === "done" ? icon("check", 14) : kind === "error" ? icon("warning-circle", 14) : null;
+  return h(`span.mark.${kind}`, ic);
+}
+
+/** Inline status text. kind: idle | running | done | error. */
 export function chip(kind, text, progress) {
-  const ic = kind === "running" ? icon("circle-notch", 13) : kind === "done" ? icon("check", 13) : kind === "error" ? icon("warning-circle", 13) : null;
   const t = text ?? STATE_LABEL[kind];
-  return h(`span.chip.${kind}`, ic && h("span.chip-ic", ic), t, kind === "running" && progress != null ? ` ${Math.round(progress * 100)}%` : "");
+  return h(`span.chip.${kind}`, kind !== "idle" && statusMark(kind), t, kind === "running" && progress != null ? ` ${Math.round(progress * 100)}%` : "");
+}
+
+/** What to do when a list or pane has nothing in it yet. Left aligned, says how to fill it. */
+export function emptyState(title, body, ...actions) {
+  return h("div.empty", h("p.empty-title", title), body && h("p.empty-body", body), actions.length > 0 && h("div.empty-actions", ...actions));
+}
+
+/** Placeholder block for loading content. Pass a width like "60%". */
+export const skel = (w = "100%", cls = "") => h(`span.sk${cls ? "." + cls : ""}`, { style: `width:${w}` });
+
+/** System, light and dark switch. */
+export function themeControl() {
+  const opts = [["system", "desktop", "System theme"], ["light", "sun", "Light theme"], ["dark", "moon", "Dark theme"]];
+  const root = h("div.theme-seg", { role: "group", "aria-label": "Theme" });
+  const paint = () => {
+    const m = getMode();
+    replace(root, opts.map(([v, ic, label]) => h("button", { type: "button", "aria-label": label, title: label, "aria-pressed": String(m === v), onclick: () => { setMode(v); paint(); } }, icon(ic, 15))));
+  };
+  paint();
+  return root;
 }
 
 /** Live activity feed backed by GET /log/<stage>?since=N. */

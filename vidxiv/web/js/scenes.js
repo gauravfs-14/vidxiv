@@ -4,31 +4,31 @@
  * `path` may be dotted (compare.left.title). Empty optional strings are removed from the data.
  */
 export const SCENES = {
-  hook: { label: "Hook", tint: "accent", figure: true, fields: [
+  hook: { label: "Hook", tint: "blue", figure: true, fields: [
     { path: "headline", label: "Headline", max: 90, required: true },
     { path: "sub", label: "Second line", max: 120 },
   ] },
-  title: { label: "Title", tint: "ink", figure: true, fields: [
+  title: { label: "Title", tint: "slate", figure: true, fields: [
     { path: "title", label: "Paper title", max: 160, required: true },
     { path: "authors", label: "Authors", max: 160 },
     { path: "meta", label: "Meta", max: 100 },
   ] },
-  concept: { label: "Concept", tint: "blue", fields: [
+  concept: { label: "Concept", tint: "cyan", fields: [
     { path: "heading", label: "Heading", max: 80, required: true },
     { path: "body", label: "Body", max: 220 },
   ], note: (s) => countNote(s.items, "card") },
-  steps: { label: "Steps", tint: "teal", fields: [
+  steps: { label: "Steps", tint: "green", fields: [
     { path: "heading", label: "Heading", max: 80 },
   ], note: (s) => (s.steps?.length ? "Steps: " + s.steps.map((x) => x.label).join(", ") : "") },
-  figure: { label: "Figure", tint: "mustard", figure: true, fields: [
+  figure: { label: "Figure", tint: "amber", figure: true, fields: [
     { path: "caption", label: "Caption", max: 140 },
   ] },
-  stat: { label: "Stat", tint: "accent", fields: [
+  stat: { label: "Stat", tint: "blue", fields: [
     { path: "value", label: "Value", max: 14, required: true, span: 2 },
     { path: "label", label: "Label", max: 80, required: true, span: 4 },
     { path: "detail", label: "Detail", max: 120 },
   ] },
-  bars: { label: "Bars", tint: "teal", fields: [
+  bars: { label: "Bars", tint: "green", fields: [
     { path: "title", label: "Title", max: 80, span: 4 },
     { path: "unit", label: "Unit", max: 20, span: 2 },
   ], note: (s) => (s.bars?.length ? s.bars.map((b) => `${b.label} ${b.value}`).join(", ") : "") },
@@ -37,15 +37,15 @@ export const SCENES = {
     { path: "right.title", label: "Right title", max: 50, required: true, span: 3 },
     { path: "verdict", label: "Verdict", max: 100 },
   ] },
-  equation: { label: "Equation", tint: "blue", fields: [
+  equation: { label: "Equation", tint: "cyan", fields: [
     { path: "formula", label: "LaTeX", max: 220, required: true, mono: true },
     { path: "caption", label: "Caption", max: 140 },
   ] },
-  quote: { label: "Quote", tint: "mustard", fields: [
+  quote: { label: "Quote", tint: "amber", fields: [
     { path: "text", label: "Quote", max: 240, required: true },
     { path: "attribution", label: "Attribution", max: 100 },
   ] },
-  outro: { label: "Outro", tint: "accent", fields: [
+  outro: { label: "Outro", tint: "blue", fields: [
     { path: "headline", label: "Headline", max: 100, required: true },
     { path: "takeaway", label: "Takeaway", max: 160 },
     { path: "cta", label: "Call to action", max: 80 },

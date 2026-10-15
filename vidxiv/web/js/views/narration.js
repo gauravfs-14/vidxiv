@@ -1,7 +1,7 @@
 import { h, icon, replace, debounce, fmtDuration } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { chip, progressBar, LogFeed, field, toast, errorMessage } from "../ui.js";
+import { progressBar, LogFeed, field, toast, errorMessage, emptyState } from "../ui.js";
 import { recordClip } from "../recorder.js";
 
 export function createNarration({ store, sec }) {
@@ -20,9 +20,10 @@ export function createNarration({ store, sec }) {
   }
   function paintPlay(r, k) {
     const on = playing === k;
-    replace(r.play, icon(on ? "pause" : "play", 16));
+    replace(r.play, icon(on ? "pause" : "play", 15));
     r.play.setAttribute("aria-label", `${on ? "Pause" : "Play"} line ${k + 1}`);
     r.play.setAttribute("aria-pressed", String(on));
+    r.el.classList.toggle("playing", on);
   }
   function toggle(i, url) {
     if (playing === i) { audio.pause(); return; }
@@ -35,12 +36,12 @@ export function createNarration({ store, sec }) {
   const voiceSel = h("select", { onchange: () => { cfg.voice = voiceSel.value; changed(); } });
   const speedOut = h("output.mono", "0.95x");
   const speed = h("input#speed", { type: "range", min: 0.8, max: 1.1, step: 0.01, value: cfg.speed, oninput: () => { cfg.speed = +speed.value; speedOut.textContent = cfg.speed.toFixed(2) + "x"; changed(); } });
-  const saveState = h("span.save-state.small", { role: "status", "aria-live": "polite" });
+  const saveState = h("span.save-state", { role: "status", "aria-live": "polite" });
   const engineHint = h("p.hint");
   const sampleErr = h("p.field-error", { role: "alert", hidden: true });
   const sampleBtn = h("button.btn", { type: "button", onclick: async () => {
     sampleBtn.disabled = true;
-    replace(sampleBtn, icon("circle-notch", 16), "Generating sample");
+    replace(sampleBtn, icon("circle-notch", 15), "Generating sample");
     sampleErr.hidden = true;
     try {
       const blob = await api.voicePreview({ engine: cfg.engine, voice: cfg.voice, speed: cfg.speed });
@@ -51,10 +52,10 @@ export function createNarration({ store, sec }) {
       sampleErr.textContent = `The sample could not be made. ${errorMessage(e)} Try another engine.`;
       sampleErr.hidden = false;
     } finally {
-      replace(sampleBtn, icon("speaker-high", 16), "Hear a sample");
+      replace(sampleBtn, icon("speaker-high", 15), "Hear a sample");
       sampleBtn.disabled = false;
     }
-  } }, icon("speaker-high", 16), "Hear a sample");
+  } }, icon("speaker-high", 15), "Hear a sample");
 
   const persist = debounce(async () => {
     saveState.textContent = "Saving";
@@ -96,29 +97,27 @@ export function createNarration({ store, sec }) {
   }
   api.voices().then((v) => { voices = v; paintEngines(); }).catch(() => {});
 
-  const settings = h("div.voice-settings",
+  const settings = h("div.voice-bar",
     field("Engine", engineSel), field("Voice", voiceSel),
-    h("div.field", h("label", { for: "speed" }, "Speed ", speedOut), speed),
-    h("div.voice-actions", sampleBtn, saveState),
-    h("div.voice-notes", engineHint, sampleErr));
+    h("div.field.speed", h("label", { for: "speed" }, "Speed ", speedOut), speed),
+    h("div.voice-actions", sampleBtn, saveState));
 
   // ---------------------------------------------------------------- generate and takes
   const bar = progressBar();
-  const msg = h("p.small.muted", { "aria-live": "polite" });
-  const genBtn = h("button.btn.primary", { type: "button", onclick: () => start() }, icon("waveform", 16), "Generate narration");
+  const msg = h("p.progress-msg", { "aria-live": "polite" });
+  const genBtn = h("button.btn.primary", { type: "button", onclick: () => start() }, icon("waveform", 15), "Generate narration");
   const cancel = h("button.btn.small", { type: "button", onclick: async () => { try { await api.cancel(store.id); store.bump(); } catch (e) { toast(errorMessage(e), "error"); } } }, icon("x", 14), "Cancel");
-  const tally = h("p.small.muted.tally");
+  const tally = h("span.tally");
   const progress = h("div.progress-row", { hidden: true }, bar, cancel);
   const feed = new LogFeed(store.id, "narration");
   const errBox = h("div.notice.error", { role: "alert", hidden: true });
   const takeInput = h("input", { type: "file", accept: "audio/*,video/webm,.m4a,.mp3,.wav,.webm", hidden: true, "aria-label": "Choose one full recording", onchange: () => { if (takeInput.files[0]) sendTake(takeInput.files[0]); takeInput.value = ""; } });
-  const takeBtn = h("button.btn", { type: "button", onclick: () => takeInput.click() }, icon("upload-simple", 16), "Upload one full recording");
+  const takeBtn = h("button.btn", { type: "button", onclick: () => takeInput.click() }, icon("upload-simple", 15), "Upload full recording");
   const takeRec = h("button.btn", { type: "button", onclick: async () => {
     const sb = store.job?.storyboard;
     const f = await recordClip({ title: "Record the full narration", text: sb?.lines.map((l) => l.text).join("\n\n") });
     if (f) sendTake(f);
-  } }, icon("microphone", 16), "Record full take");
-  const takeNote = h("p.hint", "Works best when you read the lines in order. vidxiv matches the take to the script and cuts it into lines. Lines it cannot find keep the synthetic voice.");
+  } }, icon("microphone", 15), "Record full take");
 
   async function call(fn, okMsg) {
     try {
@@ -146,27 +145,28 @@ export function createNarration({ store, sec }) {
   }
 
   const list = h("ol.nlines");
-  const empty = h("p.empty", { hidden: true }, "Write the script first. The lines appear here.");
+  const head = h("div.nhead", { "aria-hidden": "true" }, h("span", "Line"), h("span"), h("span", "Narration"), h("span", "Source"), h("span.r", "Length"), h("span"));
+  const empty = h("div", { hidden: true }, emptyState("No lines to narrate yet", "Write the script first. Each line gets its own clip here.", h("a.btn", { href: `#/job/${store.id}/script`, onclick: (e) => { e.preventDefault(); sec.go("script"); } }, "Go to script")));
 
   function buildRow(i) {
     const r = { sig: "" };
-    r.idx = h("span.n.mono");
+    r.idx = h("span.n");
     r.text = h("p.ntext");
     r.play = h("button.icon-btn.play", { type: "button", onclick: () => r.url && toggle(i, r.url) });
-    r.dur = h("span.mono.dur");
-    r.badges = h("div.badges");
+    r.dur = h("span.dur");
+    r.source = h("span.source");
     r.acts = [
       h("button.btn.small.ghost", { type: "button", onclick: async () => {
         const sb = store.job.storyboard;
         const f = await recordClip({ title: `Record line ${i + 1}`, text: sb.lines[i].text });
         if (f) lineUpload(i, f);
       } }, icon("microphone", 14), "Record"),
-      h("button.btn.small.ghost", { type: "button", onclick: () => { fileTarget = i; fileIn.click(); } }, icon("upload-simple", 14), "Upload file"),
+      h("button.btn.small.ghost", { type: "button", onclick: () => { fileTarget = i; fileIn.click(); } }, icon("upload-simple", 14), "Upload"),
     ];
     r.gen = h("button.btn.small.ghost", { type: "button", onclick: () => start([i]) }, icon("arrow-clockwise", 14), "Generate");
     r.synth = h("button.btn.small.ghost", { type: "button", onclick: () => withBusy(i, () => api.deleteLine(store.id, i)) }, icon("speaker-high", 14), "Use synthetic voice");
     r.all = [...r.acts, r.gen, r.synth];
-    r.el = h("li.nrow", r.idx, r.text, h("div.nplay", r.play, r.dur), r.badges, h("div.nacts", ...r.all));
+    r.el = h("li.nrow", r.idx, r.play, r.text, r.source, r.dur, h("div.nacts", ...r.all));
     paintPlay(r, i);
     return r;
   }
@@ -182,7 +182,7 @@ export function createNarration({ store, sec }) {
     r.url = clip?.url || null;
     r.play.disabled = !r.url;
     r.dur.textContent = clip ? fmtDuration(clip.duration) : "";
-    replace(r.badges,
+    replace(r.source,
       !clip?.source && h("span.badge.none", "Not generated"),
       clip?.source && h(`span.badge.${user ? "user" : "synth"}`, user ? "Your recording" : "Synthetic"),
       stale && h("span.badge.stale", { title: "The text changed after this clip was made" }, "Stale"));
@@ -195,15 +195,16 @@ export function createNarration({ store, sec }) {
   }
 
   sec.body.append(
-    h("div.nar-grid",
-      h("div.nar-voice", h("h3.sub-title", "Voice"), settings),
-      h("div.nar-gen", h("h3.sub-title", "Generate"),
-        h("p.hint", "Builds a clip for every line. Lines that did not change are kept, and your own recordings are never replaced."),
-        h("div.gen-actions", genBtn, tally), progress, msg, errBox,
-        h("details.disclosure", h("summary", "Activity log"), feed.el))),
-    h("div.nar-lines", h("h3.sub-title", "Lines"), list, empty, fileIn),
-    h("div.nar-takes", h("h3.sub-title", "Record the whole script"),
-      h("div.take-actions", takeBtn, takeRec, takeInput), takeNote));
+    h("div.voice-section", h("h3.sub-title", "Voice"), settings, engineHint, sampleErr),
+    h("div.nar-gen",
+      h("div.gen-actions", genBtn, tally),
+      progress, msg, errBox,
+      h("details.disclosure", h("summary", "Activity log"), feed.el)),
+    h("div.nar-lines", head, list, empty, fileIn),
+    h("div.nar-takes",
+      h("h3.sub-title", "Record the whole script"),
+      h("p.hint", "Read the lines in order. vidxiv matches the take to the script and cuts it into lines. Lines it cannot find keep the synthetic voice."),
+      h("div.take-actions", takeRec, takeBtn, takeInput)));
 
   function update(job) {
     const st = job.stages.narration;
@@ -217,8 +218,8 @@ export function createNarration({ store, sec }) {
     const complete = lines.length > 0 && ready === lines.length;
 
     const kind = running ? "running" : st.state === "error" ? "error" : complete ? "done" : "idle";
-    sec.setChip(chip(kind, kind === "done" || (kind === "idle" && ready) ? `${ready} of ${lines.length} lines` : undefined, st.progress));
-    sec.setSummary(lines.length ? `${ready} of ${lines.length} lines ready${stale ? `, ${stale} stale` : ""}` : "");
+    sec.setStatus(kind, running ? "Generating" : st.state === "error" ? "Failed" : lines.length ? `${ready} of ${lines.length} lines` : "Waiting", st.progress);
+    sec.el.classList.toggle("is-busy", running);
 
     if (!cfgDirty && !settings.contains(document.activeElement)) {
       const n = job.narration;
@@ -244,6 +245,7 @@ export function createNarration({ store, sec }) {
     if (env.data && !env.ffmpeg) { errBox.hidden = false; replace(errBox, h("p", h("strong", "ffmpeg is missing. "), "Narration needs it. Install it with brew install ffmpeg, then restart vidxiv.")); }
 
     empty.hidden = !noLines;
+    head.hidden = noLines;
     while (rowsByIndex.length > lines.length) rowsByIndex.pop().el.remove();
     lines.forEach((line, i) => {
       if (!rowsByIndex[i]) { rowsByIndex[i] = buildRow(i); list.append(rowsByIndex[i].el); }

@@ -1,7 +1,7 @@
-import { h, icon, $ } from "./dom.js";
+import { $ } from "./dom.js";
 import { onConnection } from "./api.js";
 import { startRouter } from "./router.js";
-import { initTheme, toggleTheme, currentTheme } from "./theme.js";
+import { initTheme } from "./theme.js";
 import { mountHome } from "./views/home.js";
 import { mountJob } from "./views/job.js";
 
@@ -9,27 +9,25 @@ initTheme();
 
 const view = $("#view");
 const banner = $("#offline");
-let unmount = null;
+let current = null; // { id, unmount, setStage } for a job, or { unmount } for home
 
-// theme toggle
-const themeBtn = $("#theme-toggle");
-const paintTheme = () => {
-  const dark = currentTheme() === "dark";
-  themeBtn.replaceChildren(icon(dark ? "sun" : "moon", 18));
-  themeBtn.setAttribute("aria-label", dark ? "Switch to the paper theme" : "Switch to the ink theme");
-  themeBtn.title = themeBtn.getAttribute("aria-label");
-};
-themeBtn.addEventListener("click", () => { toggleTheme(); paintTheme(); });
-paintTheme();
-
-// server connection banner
 onConnection((ok) => { banner.hidden = ok; });
 
 startRouter((route) => {
-  unmount?.();
+  // Moving between stages of the same project keeps the page, so nothing reloads or flickers.
+  if (route.name === "job" && current?.id === route.id) {
+    if (route.stage) current.setStage(route.stage);
+    return;
+  }
+  current?.unmount();
   view.replaceChildren();
   window.scrollTo(0, 0);
   document.title = "vidxiv";
-  unmount = route.name === "job" ? mountJob(view, route.id) : mountHome(view);
+  if (route.name === "job") {
+    const job = mountJob(view, route.id, route.stage);
+    current = { id: route.id, ...job };
+  } else {
+    current = { unmount: mountHome(view) };
+  }
   view.focus({ preventScroll: true });
 });
