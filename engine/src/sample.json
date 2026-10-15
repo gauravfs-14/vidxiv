@@ -1,0 +1,1165 @@
+{
+ "fps": 30,
+ "total": 1547,
+ "title": "Attention Is All You Need",
+ "palette": "paper",
+ "captions": true,
+ "progressBar": true,
+ "music": null,
+ "sfx": [],
+ "figures": {
+  "fig-01": {
+   "file": "figures/fig-01.png",
+   "width": 1400,
+   "height": 1000,
+   "caption": "Figure 1: The Transformer, model architecture"
+  },
+  "fig-02": {
+   "file": "figures/fig-02.png",
+   "width": 1000,
+   "height": 1000,
+   "caption": "Figure 2: Attention weights, layer 5"
+  },
+  "fig-03": {
+   "file": "figures/fig-03.png",
+   "width": 1600,
+   "height": 700,
+   "caption": "Figure 3: BLEU on WMT 2014"
+  }
+ },
+ "lines": [
+  {
+   "index": 0,
+   "text": "What if a model read the whole sentence at once?",
+   "file": null,
+   "from": 10,
+   "dur": 82,
+   "words": [
+    {
+     "w": "What",
+     "s": 0.15,
+     "e": 0.35
+    },
+    {
+     "w": "if",
+     "s": 0.38,
+     "e": 0.54
+    },
+    {
+     "w": "a",
+     "s": 0.57,
+     "e": 0.69
+    },
+    {
+     "w": "model",
+     "s": 0.72,
+     "e": 0.95
+    },
+    {
+     "w": "read",
+     "s": 0.98,
+     "e": 1.19
+    },
+    {
+     "w": "the",
+     "s": 1.22,
+     "e": 1.39
+    },
+    {
+     "w": "whole",
+     "s": 1.42,
+     "e": 1.65
+    },
+    {
+     "w": "sentence",
+     "s": 1.68,
+     "e": 1.99
+    },
+    {
+     "w": "at",
+     "s": 2.02,
+     "e": 2.17
+    },
+    {
+     "w": "once?",
+     "s": 2.2,
+     "e": 2.43
+    }
+   ],
+   "scene": {
+    "type": "hook",
+    "headline": "What if a model read the whole sentence at once?",
+    "sub": "A 2017 paper bet that it could.",
+    "circle": "once",
+    "figure": "fig-03"
+   },
+   "highlight": {
+    "sentence": "accent"
+   },
+   "kicker": "The question",
+   "gapAfter": 16
+  },
+  {
+   "index": 1,
+   "text": "In 2017, Google researchers published Attention Is All You Need.",
+   "file": null,
+   "from": 108,
+   "dur": 98,
+   "words": [
+    {
+     "w": "In",
+     "s": 0.15,
+     "e": 0.3
+    },
+    {
+     "w": "2017,",
+     "s": 0.33,
+     "e": 0.56
+    },
+    {
+     "w": "Google",
+     "s": 0.73,
+     "e": 0.99
+    },
+    {
+     "w": "researchers",
+     "s": 1.02,
+     "e": 1.4
+    },
+    {
+     "w": "published",
+     "s": 1.43,
+     "e": 1.77
+    },
+    {
+     "w": "Attention",
+     "s": 1.8,
+     "e": 2.13
+    },
+    {
+     "w": "Is",
+     "s": 2.16,
+     "e": 2.31
+    },
+    {
+     "w": "All",
+     "s": 2.34,
+     "e": 2.52
+    },
+    {
+     "w": "You",
+     "s": 2.55,
+     "e": 2.73
+    },
+    {
+     "w": "Need.",
+     "s": 2.76,
+     "e": 2.99
+    }
+   ],
+   "scene": {
+    "type": "title",
+    "title": "Attention Is All You Need",
+    "authors": "Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser, Polosukhin",
+    "meta": "arXiv:1706.03762 / 2017"
+   },
+   "highlight": {
+    "Attention": "accent"
+   },
+   "kicker": null,
+   "gapAfter": 20
+  },
+  {
+   "index": 2,
+   "text": "Older models read one word at a time, which was slow and forgetful.",
+   "file": null,
+   "from": 226,
+   "dur": 110,
+   "words": [
+    {
+     "w": "Older",
+     "s": 0.15,
+     "e": 0.38
+    },
+    {
+     "w": "models",
+     "s": 0.41,
+     "e": 0.67
+    },
+    {
+     "w": "read",
+     "s": 0.7,
+     "e": 0.9
+    },
+    {
+     "w": "one",
+     "s": 0.93,
+     "e": 1.11
+    },
+    {
+     "w": "word",
+     "s": 1.14,
+     "e": 1.34
+    },
+    {
+     "w": "at",
+     "s": 1.37,
+     "e": 1.52
+    },
+    {
+     "w": "a",
+     "s": 1.55,
+     "e": 1.68
+    },
+    {
+     "w": "time,",
+     "s": 1.71,
+     "e": 1.94
+    },
+    {
+     "w": "which",
+     "s": 2.11,
+     "e": 2.34
+    },
+    {
+     "w": "was",
+     "s": 2.37,
+     "e": 2.55
+    },
+    {
+     "w": "slow",
+     "s": 2.58,
+     "e": 2.78
+    },
+    {
+     "w": "and",
+     "s": 2.81,
+     "e": 2.99
+    },
+    {
+     "w": "forgetful.",
+     "s": 3.02,
+     "e": 3.38
+    }
+   ],
+   "scene": {
+    "type": "concept",
+    "heading": "The old bottleneck",
+    "body": "Recurrent networks pass a hidden state along the sentence, one step after another.",
+    "items": [
+     {
+      "label": "One word at a time",
+      "detail": "No parallelism within a sentence",
+      "at": "one",
+      "tint": "rose"
+     },
+     {
+      "label": "Slow to train",
+      "detail": "Hours grow with sequence length",
+      "at": "slow",
+      "tint": "mustard"
+     },
+     {
+      "label": "Forgets early words",
+      "detail": "Signals fade over long distances",
+      "at": "forgetful",
+      "tint": "blue"
+     }
+    ]
+   },
+   "highlight": {
+    "slow": "rose",
+    "forgetful": "blue"
+   },
+   "kicker": "Background",
+   "gapAfter": 12
+  },
+  {
+   "index": 3,
+   "text": "The Transformer embeds words, lets them attend to each other, then predicts.",
+   "file": null,
+   "from": 348,
+   "dur": 118,
+   "words": [
+    {
+     "w": "The",
+     "s": 0.15,
+     "e": 0.33
+    },
+    {
+     "w": "Transformer",
+     "s": 0.36,
+     "e": 0.74
+    },
+    {
+     "w": "embeds",
+     "s": 0.77,
+     "e": 1.03
+    },
+    {
+     "w": "words,",
+     "s": 1.06,
+     "e": 1.32
+    },
+    {
+     "w": "lets",
+     "s": 1.49,
+     "e": 1.69
+    },
+    {
+     "w": "them",
+     "s": 1.72,
+     "e": 1.92
+    },
+    {
+     "w": "attend",
+     "s": 1.95,
+     "e": 2.21
+    },
+    {
+     "w": "to",
+     "s": 2.24,
+     "e": 2.39
+    },
+    {
+     "w": "each",
+     "s": 2.42,
+     "e": 2.63
+    },
+    {
+     "w": "other,",
+     "s": 2.66,
+     "e": 2.91
+    },
+    {
+     "w": "then",
+     "s": 3.08,
+     "e": 3.29
+    },
+    {
+     "w": "predicts.",
+     "s": 3.32,
+     "e": 3.65
+    }
+   ],
+   "scene": {
+    "type": "steps",
+    "heading": "One layer, four moves",
+    "steps": [
+     {
+      "label": "Embed",
+      "detail": "Words become vectors",
+      "at": "embeds"
+     },
+     {
+      "label": "Attend",
+      "detail": "Every word looks at the others",
+      "at": "attend"
+     },
+     {
+      "label": "Transform",
+      "detail": "A small network refines each one",
+      "at": "each"
+     },
+     {
+      "label": "Predict",
+      "detail": "Score the next word",
+      "at": "predicts"
+     }
+    ]
+   },
+   "highlight": {
+    "attend": "teal"
+   },
+   "kicker": "Method",
+   "gapAfter": 12
+  },
+  {
+   "index": 4,
+   "text": "Here is the design. An encoder reads the input, a decoder writes the output.",
+   "file": null,
+   "from": 478,
+   "dur": 124,
+   "words": [
+    {
+     "w": "Here",
+     "s": 0.15,
+     "e": 0.35
+    },
+    {
+     "w": "is",
+     "s": 0.38,
+     "e": 0.54
+    },
+    {
+     "w": "the",
+     "s": 0.57,
+     "e": 0.74
+    },
+    {
+     "w": "design.",
+     "s": 0.77,
+     "e": 1.06
+    },
+    {
+     "w": "An",
+     "s": 1.23,
+     "e": 1.38
+    },
+    {
+     "w": "encoder",
+     "s": 1.41,
+     "e": 1.69
+    },
+    {
+     "w": "reads",
+     "s": 1.72,
+     "e": 1.95
+    },
+    {
+     "w": "the",
+     "s": 1.98,
+     "e": 2.16
+    },
+    {
+     "w": "input,",
+     "s": 2.19,
+     "e": 2.44
+    },
+    {
+     "w": "a",
+     "s": 2.61,
+     "e": 2.74
+    },
+    {
+     "w": "decoder",
+     "s": 2.77,
+     "e": 3.05
+    },
+    {
+     "w": "writes",
+     "s": 3.08,
+     "e": 3.34
+    },
+    {
+     "w": "the",
+     "s": 3.37,
+     "e": 3.55
+    },
+    {
+     "w": "output.",
+     "s": 3.58,
+     "e": 3.86
+    }
+   ],
+   "scene": {
+    "type": "figure",
+    "figure": "fig-01",
+    "caption": "Figure 1: The Transformer, model architecture",
+    "zoom": {
+     "x": 0.52,
+     "y": 0.12,
+     "w": 0.46,
+     "h": 0.78,
+     "at": "decoder"
+    },
+    "callouts": [
+     {
+      "text": "reads the input",
+      "x": 0.2,
+      "y": 0.45,
+      "at": "encoder"
+     },
+     {
+      "text": "writes the output",
+      "x": 0.8,
+      "y": 0.55,
+      "at": "writes"
+     }
+    ]
+   },
+   "highlight": {
+    "encoder": "blue",
+    "decoder": "accent"
+   },
+   "kicker": "Architecture",
+   "gapAfter": 14
+  },
+  {
+   "index": 5,
+   "text": "At its core, queries are compared with keys to weight the values.",
+   "file": null,
+   "from": 616,
+   "dur": 105,
+   "words": [
+    {
+     "w": "At",
+     "s": 0.15,
+     "e": 0.3
+    },
+    {
+     "w": "its",
+     "s": 0.33,
+     "e": 0.51
+    },
+    {
+     "w": "core,",
+     "s": 0.54,
+     "e": 0.77
+    },
+    {
+     "w": "queries",
+     "s": 0.94,
+     "e": 1.22
+    },
+    {
+     "w": "are",
+     "s": 1.25,
+     "e": 1.43
+    },
+    {
+     "w": "compared",
+     "s": 1.46,
+     "e": 1.77
+    },
+    {
+     "w": "with",
+     "s": 1.8,
+     "e": 2.0
+    },
+    {
+     "w": "keys",
+     "s": 2.03,
+     "e": 2.24
+    },
+    {
+     "w": "to",
+     "s": 2.27,
+     "e": 2.42
+    },
+    {
+     "w": "weight",
+     "s": 2.45,
+     "e": 2.7
+    },
+    {
+     "w": "the",
+     "s": 2.73,
+     "e": 2.91
+    },
+    {
+     "w": "values.",
+     "s": 2.94,
+     "e": 3.22
+    }
+   ],
+   "scene": {
+    "type": "equation",
+    "formula": "\\mathrm{Attention}(Q,K,V)=\\mathrm{softmax}\\!\\left(\\frac{QK^{\\top}}{\\sqrt{d_k}}\\right)V",
+    "caption": "Scaled dot-product attention",
+    "terms": [
+     {
+      "label": "Q",
+      "detail": "What each word is looking for",
+      "at": "queries",
+      "tint": "accent"
+     },
+     {
+      "label": "K",
+      "detail": "What each word offers",
+      "at": "keys",
+      "tint": "teal"
+     },
+     {
+      "label": "V",
+      "detail": "The content that gets mixed",
+      "at": "values",
+      "tint": "blue"
+     }
+    ]
+   },
+   "highlight": {
+    "queries": "accent",
+    "keys": "teal",
+    "values": "blue"
+   },
+   "kicker": "Core idea",
+   "gapAfter": 14
+  },
+  {
+   "index": 6,
+   "text": "Each word can look straight at every other word, near or far.",
+   "file": null,
+   "from": 735,
+   "dur": 102,
+   "words": [
+    {
+     "w": "Each",
+     "s": 0.15,
+     "e": 0.35
+    },
+    {
+     "w": "word",
+     "s": 0.38,
+     "e": 0.59
+    },
+    {
+     "w": "can",
+     "s": 0.62,
+     "e": 0.8
+    },
+    {
+     "w": "look",
+     "s": 0.83,
+     "e": 1.03
+    },
+    {
+     "w": "straight",
+     "s": 1.06,
+     "e": 1.37
+    },
+    {
+     "w": "at",
+     "s": 1.4,
+     "e": 1.55
+    },
+    {
+     "w": "every",
+     "s": 1.58,
+     "e": 1.81
+    },
+    {
+     "w": "other",
+     "s": 1.84,
+     "e": 2.07
+    },
+    {
+     "w": "word,",
+     "s": 2.1,
+     "e": 2.33
+    },
+    {
+     "w": "near",
+     "s": 2.5,
+     "e": 2.7
+    },
+    {
+     "w": "or",
+     "s": 2.73,
+     "e": 2.89
+    },
+    {
+     "w": "far.",
+     "s": 2.92,
+     "e": 3.12
+    }
+   ],
+   "scene": {
+    "type": "figure",
+    "figure": "fig-02",
+    "callouts": [
+     {
+      "text": "it looks back at animal",
+      "x": 0.2,
+      "y": 0.66,
+      "at": "straight"
+     }
+    ]
+   },
+   "highlight": {
+    "straight": "teal"
+   },
+   "kicker": "Attention map",
+   "gapAfter": 12
+  },
+  {
+   "index": 7,
+   "text": "On English to German translation, it scored 28.4 BLEU.",
+   "file": null,
+   "from": 849,
+   "dur": 87,
+   "words": [
+    {
+     "w": "On",
+     "s": 0.15,
+     "e": 0.3
+    },
+    {
+     "w": "English",
+     "s": 0.33,
+     "e": 0.61
+    },
+    {
+     "w": "to",
+     "s": 0.64,
+     "e": 0.8
+    },
+    {
+     "w": "German",
+     "s": 0.83,
+     "e": 1.08
+    },
+    {
+     "w": "translation,",
+     "s": 1.11,
+     "e": 1.52
+    },
+    {
+     "w": "it",
+     "s": 1.69,
+     "e": 1.85
+    },
+    {
+     "w": "scored",
+     "s": 1.88,
+     "e": 2.13
+    },
+    {
+     "w": "28.4",
+     "s": 2.16,
+     "e": 2.37
+    },
+    {
+     "w": "BLEU.",
+     "s": 2.4,
+     "e": 2.63
+    }
+   ],
+   "scene": {
+    "type": "stat",
+    "value": "28.4",
+    "label": "BLEU on English to German",
+    "detail": "WMT 2014 test set",
+    "compare": {
+     "label": "Best earlier result",
+     "detail": "26.4",
+     "at": "German"
+    }
+   },
+   "highlight": {
+    "28.4": "accent"
+   },
+   "kicker": "Result",
+   "gapAfter": 16
+  },
+  {
+   "index": 8,
+   "text": "And it trained for a fraction of the cost of earlier systems.",
+   "file": null,
+   "from": 952,
+   "dur": 98,
+   "words": [
+    {
+     "w": "And",
+     "s": 0.15,
+     "e": 0.33
+    },
+    {
+     "w": "it",
+     "s": 0.36,
+     "e": 0.51
+    },
+    {
+     "w": "trained",
+     "s": 0.54,
+     "e": 0.82
+    },
+    {
+     "w": "for",
+     "s": 0.85,
+     "e": 1.03
+    },
+    {
+     "w": "a",
+     "s": 1.06,
+     "e": 1.19
+    },
+    {
+     "w": "fraction",
+     "s": 1.22,
+     "e": 1.52
+    },
+    {
+     "w": "of",
+     "s": 1.55,
+     "e": 1.71
+    },
+    {
+     "w": "the",
+     "s": 1.74,
+     "e": 1.91
+    },
+    {
+     "w": "cost",
+     "s": 1.94,
+     "e": 2.15
+    },
+    {
+     "w": "of",
+     "s": 2.18,
+     "e": 2.33
+    },
+    {
+     "w": "earlier",
+     "s": 2.36,
+     "e": 2.64
+    },
+    {
+     "w": "systems.",
+     "s": 2.67,
+     "e": 2.98
+    }
+   ],
+   "scene": {
+    "type": "bars",
+    "title": "Training cost",
+    "unit": "10^18 FLOPs, lower is better",
+    "bars": [
+     {
+      "label": "Transformer",
+      "value": 3.3,
+      "display": "3.3",
+      "highlight": true,
+      "at": "trained"
+     },
+     {
+      "label": "ConvS2S",
+      "value": 9.6,
+      "display": "9.6",
+      "at": "fraction"
+     },
+     {
+      "label": "GNMT + RL",
+      "value": 23,
+      "display": "23",
+      "at": "earlier"
+     }
+    ]
+   },
+   "highlight": {
+    "fraction": "rose"
+   },
+   "kicker": "Efficiency",
+   "gapAfter": 12
+  },
+  {
+   "index": 9,
+   "text": "Recurrent models process tokens in order, while attention processes them all together.",
+   "file": null,
+   "from": 1062,
+   "dur": 122,
+   "words": [
+    {
+     "w": "Recurrent",
+     "s": 0.15,
+     "e": 0.48
+    },
+    {
+     "w": "models",
+     "s": 0.51,
+     "e": 0.77
+    },
+    {
+     "w": "process",
+     "s": 0.8,
+     "e": 1.08
+    },
+    {
+     "w": "tokens",
+     "s": 1.11,
+     "e": 1.37
+    },
+    {
+     "w": "in",
+     "s": 1.4,
+     "e": 1.55
+    },
+    {
+     "w": "order,",
+     "s": 1.58,
+     "e": 1.84
+    },
+    {
+     "w": "while",
+     "s": 2.01,
+     "e": 2.24
+    },
+    {
+     "w": "attention",
+     "s": 2.27,
+     "e": 2.6
+    },
+    {
+     "w": "processes",
+     "s": 2.63,
+     "e": 2.96
+    },
+    {
+     "w": "them",
+     "s": 2.99,
+     "e": 3.2
+    },
+    {
+     "w": "all",
+     "s": 3.23,
+     "e": 3.41
+    },
+    {
+     "w": "together.",
+     "s": 3.44,
+     "e": 3.77
+    }
+   ],
+   "scene": {
+    "type": "compare",
+    "left": {
+     "title": "Recurrent",
+     "points": [
+      "One token at a time",
+      "Slow to train",
+      "Forgets distant words"
+     ],
+     "tint": "rose"
+    },
+    "right": {
+     "title": "Attention",
+     "points": [
+      "All tokens in parallel",
+      "Fast to train",
+      "Direct long range links"
+     ],
+     "tint": "teal"
+    },
+    "verdict": "Parallel beats sequential."
+   },
+   "highlight": {
+    "together": "teal"
+   },
+   "kicker": "Why it works",
+   "gapAfter": 14
+  },
+  {
+   "index": 10,
+   "text": "In the authors' own words, a simple architecture based solely on attention.",
+   "file": null,
+   "from": 1198,
+   "dur": 113,
+   "words": [
+    {
+     "w": "In",
+     "s": 0.15,
+     "e": 0.3
+    },
+    {
+     "w": "the",
+     "s": 0.33,
+     "e": 0.51
+    },
+    {
+     "w": "authors'",
+     "s": 0.54,
+     "e": 0.85
+    },
+    {
+     "w": "own",
+     "s": 0.88,
+     "e": 1.06
+    },
+    {
+     "w": "words,",
+     "s": 1.09,
+     "e": 1.34
+    },
+    {
+     "w": "a",
+     "s": 1.51,
+     "e": 1.64
+    },
+    {
+     "w": "simple",
+     "s": 1.67,
+     "e": 1.92
+    },
+    {
+     "w": "architecture",
+     "s": 1.95,
+     "e": 2.37
+    },
+    {
+     "w": "based",
+     "s": 2.4,
+     "e": 2.63
+    },
+    {
+     "w": "solely",
+     "s": 2.66,
+     "e": 2.91
+    },
+    {
+     "w": "on",
+     "s": 2.94,
+     "e": 3.09
+    },
+    {
+     "w": "attention.",
+     "s": 3.12,
+     "e": 3.48
+    }
+   ],
+   "scene": {
+    "type": "quote",
+    "text": "We propose a new simple network architecture, the Transformer, based solely on attention mechanisms.",
+    "attribution": "Vaswani et al., 2017"
+   },
+   "highlight": {
+    "solely": "accent"
+   },
+   "kicker": "In their words",
+   "gapAfter": 16
+  },
+  {
+   "index": 11,
+   "text": "That idea now powers almost every modern language model. Read the paper to go deeper.",
+   "file": null,
+   "from": 1327,
+   "dur": 130,
+   "words": [
+    {
+     "w": "That",
+     "s": 0.15,
+     "e": 0.35
+    },
+    {
+     "w": "idea",
+     "s": 0.38,
+     "e": 0.59
+    },
+    {
+     "w": "now",
+     "s": 0.62,
+     "e": 0.8
+    },
+    {
+     "w": "powers",
+     "s": 0.83,
+     "e": 1.08
+    },
+    {
+     "w": "almost",
+     "s": 1.11,
+     "e": 1.37
+    },
+    {
+     "w": "every",
+     "s": 1.4,
+     "e": 1.63
+    },
+    {
+     "w": "modern",
+     "s": 1.66,
+     "e": 1.91
+    },
+    {
+     "w": "language",
+     "s": 1.94,
+     "e": 2.25
+    },
+    {
+     "w": "model.",
+     "s": 2.28,
+     "e": 2.54
+    },
+    {
+     "w": "Read",
+     "s": 2.71,
+     "e": 2.91
+    },
+    {
+     "w": "the",
+     "s": 2.94,
+     "e": 3.12
+    },
+    {
+     "w": "paper",
+     "s": 3.15,
+     "e": 3.38
+    },
+    {
+     "w": "to",
+     "s": 3.41,
+     "e": 3.56
+    },
+    {
+     "w": "go",
+     "s": 3.59,
+     "e": 3.74
+    },
+    {
+     "w": "deeper.",
+     "s": 3.77,
+     "e": 4.06
+    }
+   ],
+   "scene": {
+    "type": "outro",
+    "headline": "Attention changed everything",
+    "takeaway": "The same idea now sits inside nearly every large language model.",
+    "cta": "Read the paper",
+    "link": "arxiv.org/abs/1706.03762"
+   },
+   "highlight": {},
+   "kicker": null,
+   "gapAfter": 0
+  }
+ ],
+ "scenes": [
+  {
+   "from": 0,
+   "dur": 110
+  },
+  {
+   "from": 98,
+   "dur": 130
+  },
+  {
+   "from": 216,
+   "dur": 134
+  },
+  {
+   "from": 338,
+   "dur": 142
+  },
+  {
+   "from": 468,
+   "dur": 150
+  },
+  {
+   "from": 606,
+   "dur": 131
+  },
+  {
+   "from": 725,
+   "dur": 126
+  },
+  {
+   "from": 839,
+   "dur": 115
+  },
+  {
+   "from": 942,
+   "dur": 122
+  },
+  {
+   "from": 1052,
+   "dur": 148
+  },
+  {
+   "from": 1188,
+   "dur": 141
+  },
+  {
+   "from": 1317,
+   "dur": 230
+  }
+ ]
+}
