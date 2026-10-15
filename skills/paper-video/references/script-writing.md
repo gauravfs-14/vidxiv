@@ -33,8 +33,8 @@ Do not open with "Hey everyone", "Today we're looking at", or "In this video". T
 8. A limit or a catch, if the paper gives one.
 9. Takeaway. What to remember, then the link.
 
-Medium (14 to 18 lines) adds: a second mechanism step, a second result, a comparison with the previous approach, and one concrete consequence.
-Long (26 to 32 lines) adds background, an ablation or what mattered most, a failure case, and what is still open.
+Past about 60 seconds (14 to 18 lines) adds: a second mechanism step, a second result, a comparison with the previous approach, and one concrete consequence.
+Past about 2 minutes (26 lines and more) adds background, an ablation or what mattered most, a failure case, and what is still open.
 
 ## Before and after
 

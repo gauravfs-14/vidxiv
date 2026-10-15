@@ -5,7 +5,7 @@ import json
 import shutil
 from pathlib import Path
 
-from . import agents, jobs, paper, render, schema, script, voice
+from . import agents, config, jobs, paper, render, schema, script, voice
 from .jobs import Job
 
 
@@ -51,7 +51,7 @@ def start_script(job: Job, agent: str, model: str, mode: str, text: str = "") ->
                 raise RuntimeError(f"The {agent} CLI was not found on this machine")
             job.log("script", "No agent CLI in use, building scenes with simple rules")
             if fixed is None:
-                sb = script.fallback_storyboard(paper_info, figures, brief.get("length", "short"), brief.get("look", "auto"))
+                sb = script.fallback_storyboard(paper_info, figures, config.target(brief)[0], brief.get("look", "auto"))
             else:
                 sb = script.assign_scenes(fixed, paper_info, figures, brief.get("look", "auto"))
             sb, problems = agents.finalize(sb, {f["id"] for f in figures}, fixed)

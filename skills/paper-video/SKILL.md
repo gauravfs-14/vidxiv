@@ -11,7 +11,7 @@ Apply the `unslop` skill to every word of narration, and the `video-taste` skill
 
 ## Inputs (all in the current directory)
 
-- `brief.json`: target length and line count, look, paper metadata, figure list, `userNotes` from the user.
+- `brief.json`: target seconds, line count and level of detail, look, paper metadata, figure list, `userNotes` from the user.
 - `paper/paper.md`: full paper text with `##` section headings. Read the abstract, introduction, method, main results and limitations.
 - `paper/figures/fig-NN.png` and `paper/figures.json`: figures cut from the PDF. Open the images you might use and look at them.
 - `narration.txt` (only sometimes): fixed narration, one line per row. See "Fixed narration" below.
@@ -48,7 +48,7 @@ lists the rest. Repeat until it prints `OK`. Rewrite any line it flags with a st
 - **Variety.** No more than two scenes of the same type in a row. `concept` is the fallback, not the default.
 - **Spoken form.** Write for text to speech. Spell out symbols and units the way a person says them: "8 attention heads", "about 28 BLEU", "N squared".
   No LaTeX, no parentheses with citations, no URLs in narration, no abbreviations a voice would mangle (spell "e.g." as "for example").
-- **Length.** Hit `targetLines` and about `targetSeconds` (a line is about 4 to 6 seconds). Cut words before adding lines.
+- **Length and detail.** Hit `targetLines` and about `targetSeconds` (a line is about 4 to 6 seconds). Cut words before adding lines. `detail` says how deep to go: more detail means more mechanism, more evidence and more caveats, never longer sentences.
 - **Look.** If `brief.json` has a `look` other than `auto`, copy it into `look`. If it is `auto`, choose one using `video-taste` section 1 and set `look`. Never default to cream and terracotta.
 - **Kickers are rare.** At most one line in three has a `kicker`, none on the title and outro.
 

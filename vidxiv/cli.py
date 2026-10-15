@@ -119,7 +119,7 @@ def cmd_make(a) -> int:
             return 2
         job = jobs.create({"type": "arxiv", "id": aid, "url": f"https://arxiv.org/abs/{aid}"}, f"arXiv:{aid}")
         pipeline.start_ingest(job)
-    job.update(lambda s: s["brief"].update(length=a.length, formats=a.format, look=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
+    job.update(lambda s: s["brief"].update(seconds=a.seconds, detail=a.detail, formats=a.format, look=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
     if a.voice:
         job.update(lambda s: s["narration"].update(voice=a.voice))
 
@@ -181,7 +181,8 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("source", help="arXiv id or link, or a PDF path")
     m.add_argument("--agent", default="auto", choices=["auto", "claude", "codex", "none"])
     m.add_argument("--model", default="")
-    m.add_argument("--length", default="short", choices=["short", "medium", "long"])
+    m.add_argument("--seconds", type=int, default=45, help="target narration length, 20 to 600")
+    m.add_argument("--detail", default="balanced", choices=["overview", "balanced", "deep"])
     m.add_argument("--format", action="append", default=None, choices=["Vertical", "Landscape", "Square"])
     m.add_argument("--look", default="auto", choices=["auto", "studio", "night", "swiss", "cobalt"])
     m.add_argument("--music", default="warm", choices=["warm", "bright", "calm", "night", "none"])

@@ -21,12 +21,27 @@ TAIL = 75  # frames after the last line
 OVERLAP = 12  # frames a scene overlaps the next one
 
 FORMATS = {"Vertical": (1080, 1920), "Landscape": (1920, 1080), "Square": (1080, 1080)}
-# Spoken length per brief choice: (target seconds, number of narration lines)
-LENGTHS = {
-    "short": (45, "8 to 10"),
-    "medium": (90, "14 to 18"),
-    "long": (180, "26 to 32"),
+PRESET_SECONDS = {"short": 45, "medium": 90, "long": 180}
+MIN_SECONDS, MAX_SECONDS = 20, 600
+SECONDS_PER_LINE = 5.2
+DETAILS = {
+    "overview": "Overview. One result and one mechanism, in plain words for a general audience. Skip equations, ablations and implementation details.",
+    "balanced": "Balanced. The problem, the idea, how it works, the main result with its numbers, and one limit. Define terms the first time they appear.",
+    "deep": "In depth. For a technical audience. Cover the method step by step, the key equation if there is one, the main results and what the ablations show, how it compares with the strongest baseline, and the limits and assumptions. Use more figures, bars and steps scenes.",
 }
+
+
+def target(brief: dict) -> tuple[int, str, str]:
+    """(seconds, line count text, detail text) for a brief. Old `length` presets still work."""
+    try:
+        seconds = int(brief.get("seconds") or PRESET_SECONDS.get(brief.get("length", "short"), 45))
+    except (TypeError, ValueError):
+        seconds = 45
+    seconds = max(MIN_SECONDS, min(MAX_SECONDS, seconds))
+    n = max(3, round(seconds / SECONDS_PER_LINE))
+    detail = DETAILS.get(brief.get("detail", "balanced"), DETAILS["balanced"])
+    return seconds, f"{max(3, n - 1)} to {n + 1}", detail
+
 
 for d in (JOBS, MODELS, CACHE):
     d.mkdir(parents=True, exist_ok=True)

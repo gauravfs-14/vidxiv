@@ -95,13 +95,13 @@ def _short(s: str, n: int = 90) -> str:
     return s if len(s) <= n else s[: n - 1].rsplit(" ", 1)[0]
 
 
-def fallback_storyboard(paper: dict, figures: list[dict], length: str = "short", look: str = "auto") -> dict:
+def fallback_storyboard(paper: dict, figures: list[dict], seconds: int = 45, look: str = "auto") -> dict:
     """A plain but valid storyboard from the abstract and figure captions. Used when no agent CLI is installed."""
     title = paper.get("title") or "Untitled paper"
     authors = paper.get("authors") or []
     meta = paper.get("url", "").replace("https://", "")
     sents = _sentences(paper.get("abstract", "")) or ["This paper does not include a readable abstract."]
-    n_fig = {"short": 2, "medium": 4, "long": 6}.get(length, 2)
+    n_fig = max(1, min(8, seconds // 25))
     lines: list[dict] = []
 
     def add(text, scene, kicker=None):
@@ -110,7 +110,7 @@ def fallback_storyboard(paper: dict, figures: list[dict], length: str = "short",
     add(f"{_short(title, 120)}.", {"type": "hook", "headline": _short(title, 80)})
     add(f"This video walks through the paper by {authors[0] + ' and colleagues' if len(authors) > 1 else authors[0] if authors else 'its authors'}.",
         {"type": "title", "title": _short(title, 150), "authors": ", ".join(authors[:4]) + (" et al." if len(authors) > 4 else "") or None, "meta": meta or None})
-    body = sents[: {"short": 4, "medium": 6, "long": 9}.get(length, 4)]
+    body = sents[: max(3, min(10, seconds // 12))]
     for i, s in enumerate(body):
         add(s, {"type": "concept", "heading": "The paper in brief" if i == 0 else _short(s, 60), "body": None, "items": []}, "Abstract")
     for fig in figures[:n_fig]:

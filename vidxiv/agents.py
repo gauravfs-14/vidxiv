@@ -68,11 +68,11 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
     wrapper = d / "validate.sh"
     wrapper.write_text(f'#!/bin/sh\ncd "$(dirname "$0")"\nPYTHONPATH="{config.ROOT}" exec "{sys.executable}" -m vidxiv validate "$@"\n')
     wrapper.chmod(0o755)
-    seconds, n_lines = config.LENGTHS.get(brief.get("length", "short"), config.LENGTHS["short"])
+    seconds, n_lines, detail = config.target(brief)
     paper = job.paper() or {}
     figures = job.figures()
     (d / "brief.json").write_text(json.dumps({
-        "targetSeconds": seconds, "targetLines": n_lines, "look": brief.get("look", "auto"),
+        "targetSeconds": seconds, "targetLines": n_lines, "detail": detail, "look": brief.get("look", "auto"),
         "userNotes": brief.get("instructions", ""), "paper": {k: paper.get(k) for k in ("title", "authors", "abstract", "url", "published")},
         "figures": [{k: f[k] for k in ("id", "label", "caption", "width", "height")} for f in figures],
     }, indent=2))
@@ -85,14 +85,14 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
 
 
 def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = None) -> str:
-    seconds, n_lines = config.LENGTHS.get(brief.get("length", "short"), config.LENGTHS["short"])
+    seconds, n_lines, detail = config.target(brief)
     if problems:
         return ("./storyboard.json failed validation:\n- " + "\n- ".join(problems) +
                 "\nFix the file in place, then run ./validate.sh storyboard.json until it prints OK. Change nothing else.")
     p = ("Write ./storyboard.json for the explainer video described in ./brief.json. "
          "Read ./skills/paper-video/SKILL.md, ./skills/video-taste/SKILL.md and ./skills/unslop/SKILL.md first and follow them. "
          "Read ./paper/paper.md for the content. Open the figure PNGs you plan to use (./paper/figures/) and look at them before choosing zoom regions or callouts. "
-         f"Target about {seconds} seconds of narration, {n_lines} lines. "
+         f"Target about {seconds} seconds of narration, {n_lines} lines. Level of detail: {detail} "
          "When the file is written, run ./validate.sh storyboard.json and fix every problem until it prints OK.")
     if fixed_lines:
         p += (" The narration is fixed: ./narration.txt has one line of narration per row. Copy each row into the `text` field of one storyboard line, "

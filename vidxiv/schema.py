@@ -170,7 +170,7 @@ class Storyboard(Base):
     title: str = Field(max_length=160)
     source: str | None = Field(default=None, max_length=160)  # "arXiv:2401.06015" or a filename
     look: Literal["studio", "night", "swiss", "cobalt"] = "studio"
-    lines: list[Line] = Field(min_length=1, max_length=60)
+    lines: list[Line] = Field(min_length=1, max_length=120)
 
     @model_validator(mode="before")
     @classmethod
