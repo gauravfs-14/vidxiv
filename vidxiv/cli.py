@@ -109,6 +109,8 @@ def cmd_make(a) -> int:
     from . import jobs, paper, pipeline, voice
 
     jobs.recover_interrupted()
+    if a.seconds > 300:
+        print(f"Note: a {a.seconds // 60} minute video makes the agent read the whole paper and write about {round(a.seconds / 5.2)} lines. This uses a lot of tokens.", file=sys.stderr)
     if Path(a.source).exists():
         job = jobs.create({"type": "pdf", "filename": Path(a.source).name}, Path(a.source).stem)
         pipeline.start_ingest(job, Path(a.source).resolve())
