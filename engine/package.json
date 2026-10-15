@@ -5,14 +5,13 @@
   "scripts": {
     "studio": "remotion studio src/index.ts --public-dir=public",
     "check": "node scripts/check.mjs",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "looks": "node scripts/looks.mjs"
   },
   "dependencies": {
     "@remotion/cli": "4.0.535",
-    "@remotion/effects": "4.0.535",
     "@remotion/google-fonts": "4.0.535",
     "@remotion/media": "4.0.535",
-    "@remotion/rough-notation": "4.0.535",
     "@remotion/transitions": "4.0.535",
     "katex": "0.19.0",
     "react": "19.3.1",

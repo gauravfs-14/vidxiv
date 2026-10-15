@@ -1,8 +1,8 @@
 {
+ "look": "studio",
  "fps": 30,
  "total": 1547,
  "title": "Attention Is All You Need",
- "palette": "paper",
  "captions": true,
  "progressBar": true,
  "music": null,
@@ -96,7 +96,7 @@
    "highlight": {
     "sentence": "accent"
    },
-   "kicker": "The question",
+   "kicker": null,
    "gapAfter": 16
   },
   {
@@ -371,7 +371,7 @@
    "highlight": {
     "attend": "teal"
    },
-   "kicker": "Method",
+   "kicker": null,
    "gapAfter": 12
   },
   {
@@ -482,7 +482,7 @@
     "encoder": "blue",
     "decoder": "accent"
    },
-   "kicker": "Architecture",
+   "kicker": null,
    "gapAfter": 14
   },
   {
@@ -669,7 +669,7 @@
    "highlight": {
     "straight": "teal"
    },
-   "kicker": "Attention map",
+   "kicker": null,
    "gapAfter": 12
   },
   {
@@ -739,7 +739,7 @@
    "highlight": {
     "28.4": "accent"
    },
-   "kicker": "Result",
+   "kicker": null,
    "gapAfter": 16
   },
   {
@@ -935,7 +935,7 @@
    "highlight": {
     "together": "teal"
    },
-   "kicker": "Why it works",
+   "kicker": null,
    "gapAfter": 14
   },
   {
@@ -1014,7 +1014,7 @@
    "highlight": {
     "solely": "accent"
    },
-   "kicker": "In their words",
+   "kicker": null,
    "gapAfter": 16
   },
   {

@@ -1,63 +1,75 @@
 import React from 'react';
 import {useCurrentFrame} from 'remotion';
-import {Circle} from '@remotion/rough-notation';
-import {SANS, SERIF, useTheme} from '../theme';
+import {useTheme} from '../theme';
 import {fitFont, useLayout} from '../layout';
 import {useScene} from '../context';
-import {Stage, prog, useEnter} from '../components';
+import {Stage, prog} from '../components';
+import {Headline, Outline, Rule} from '../marks';
+import {Mono, Reveal, stagger} from './primitives';
 import type {SceneOf} from '../types';
 
+/** Flat bars on a baseline rule. No tracks: the length is the data. The highlighted bar takes the accent and an outlined value. */
 export const Bars: React.FC<{scene: SceneOf<'bars'>}> = ({scene}) => {
   const frame = useCurrentFrame();
-  const {u, stage, isLandscape} = useLayout();
-  const {C, rgba} = useTheme();
+  const {u, stage, isLandscape, isPortrait} = useLayout();
+  const {C, sans, dw, r, rgba} = useTheme();
   const S = useScene();
   const bars = (scene.bars ?? []).slice(0, 6);
   const n = bars.length;
   const cues = S.cues(bars.map((b) => b.at));
   const max = Math.max(1e-9, ...bars.map((b) => (Number.isFinite(b.value) ? b.value : 0)));
-  const hp = useEnter(S.start - 4);
-  const width = Math.min(stage.w, 1500 * u);
-  const headH = scene.title ? 120 * u : 0;
-  const rowH = Math.min(190 * u, (stage.h - headH - 30 * u) / Math.max(1, n));
-  const labelSize = Math.min((isLandscape ? 38 : 46) * u, rowH * (isLandscape ? 0.34 : 0.3));
-  const trackH = Math.min((isLandscape ? 58 : 76) * u, rowH * (isLandscape ? 0.5 : 0.36));
-  const base = rgba(C.inkSoft, 0.5);
+  const tokens = (scene.title ?? '').split(/\s+/).filter(Boolean);
+  const head = scene.title ? fitFont(scene.title, stage.w * 0.8, 120 * u, (isLandscape ? 92 : 100) * u, 44 * u, 0.55, 1.0) : 0;
+  const headH = scene.title ? head * 1.1 + (scene.unit ? 50 * u : 0) + 40 * u : 0;
+  const rowH = Math.min((isPortrait ? 240 : 176) * u, (stage.h - headH) / Math.max(1, n));
+  const labelSize = Math.min((isLandscape ? 42 : 50) * u, rowH * (isLandscape ? 0.36 : 0.3));
+  const barH = Math.min((isLandscape ? 76 : 90) * u, rowH * (isLandscape ? 0.56 : 0.4));
+  const labelW = isLandscape ? stage.w * 0.22 : stage.w;
+  const trackW = isLandscape ? stage.w - labelW - 30 * u : stage.w;
+  const valueRoom = 190 * u;
+  const gap = Math.max(10 * u, (rowH - (isLandscape ? barH : barH + labelSize * 1.2)) * 0.8);
   return (
-    <Stage style={{gap: 26 * u}}>
+    <Stage v='center' style={{gap: 34 * u}}>
       {scene.title && (
-        <div style={{textAlign: 'center', opacity: hp, translate: `0px ${(1 - hp) * 24 * u}px`}}>
-          <div style={{fontFamily: SERIF, fontSize: fitFont(scene.title, width, 100 * u, 80 * u, 36 * u, 0.4, 1.05), color: C.ink, letterSpacing: -u}}>{scene.title}</div>
-          {scene.unit && <div style={{fontFamily: SANS, fontWeight: 600, fontSize: 26 * u, letterSpacing: 3 * u, textTransform: 'uppercase', color: C.inkSoft, marginTop: 8 * u}}>{scene.unit}</div>}
+        <div style={{display: 'flex', flexDirection: 'column', gap: 14 * u}}>
+          <Headline tokens={tokens} times={stagger(S.start, tokens.length)} size={head} />
+          {scene.unit && (
+            <Reveal at={S.start + 8} rise={10}>
+              <Mono size={26}>{scene.unit}</Mono>
+            </Reveal>
+          )}
         </div>
       )}
-      <div style={{width, display: 'flex', flexDirection: 'column', gap: Math.max(10 * u, (rowH - (isLandscape ? trackH : trackH + labelSize * 1.3)) * 0.9)}}>
+      <div style={{position: 'relative', width: stage.w, display: 'flex', flexDirection: 'column', gap}}>
+        {isLandscape && (
+          <div style={{position: 'absolute', left: labelW + 30 * u - 1 * u, top: -10 * u, bottom: -10 * u}}>
+            <Rule progress={prog(frame, S.start, 24)} vertical length="100%" thickness={2 * u} color={C.ink} />
+          </div>
+        )}
         {bars.map((b, i) => {
           const g = prog(frame, cues[i], 24);
           const v = Math.max(0, Number.isFinite(b.value) ? b.value : 0) / max;
-          const col = b.highlight ? C.accent : base;
+          const col = b.highlight ? C.accent : rgba(C.ink, C.ink === '#FFFFFF' ? 0.42 : 0.22);
           const display = b.display ?? String(b.value);
-          const label = (
-            <div style={{fontFamily: SANS, fontWeight: b.highlight ? 700 : 600, fontSize: labelSize, color: b.highlight ? C.ink : C.inkSoft, lineHeight: 1.1, width: isLandscape ? '24%' : undefined, flex: 'none', opacity: Math.min(1, g * 3)}}>{b.label}</div>
-          );
-          const track = (
-            <div style={{position: 'relative', flex: isLandscape ? 1 : 'none', width: isLandscape ? undefined : '100%', height: trackH, background: C.muted, borderRadius: trackH * 0.28}}>
-              <div style={{position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max(0.01, v * g) * 86}%`, background: col, borderRadius: trackH * 0.28}} />
-              <div style={{position: 'absolute', left: `calc(${Math.max(0.01, v * g) * 86}% + ${16 * u}px)`, top: 0, bottom: 0, display: 'flex', alignItems: 'center', opacity: Math.min(1, Math.max(0, (g - 0.5) * 2))}}>
-                {b.highlight ? (
-                  <Circle color={C.accent} strokeWidth={3.5 * u} iterations={1} seed={i + 2} padding={{left: 14 * u, right: 14 * u, top: 4 * u, bottom: 4 * u}} progress={prog(frame, cues[i] + 22, 16)}>
-                    <span style={{fontFamily: SANS, fontWeight: 700, fontSize: labelSize * 1.1, color: C.accent, whiteSpace: 'nowrap'}}>{display}</span>
-                  </Circle>
-                ) : (
-                  <span style={{fontFamily: SANS, fontWeight: 700, fontSize: labelSize * 1.1, color: C.inkSoft, whiteSpace: 'nowrap'}}>{display}</span>
-                )}
-              </div>
-            </div>
+          const w = Math.max(0.01, v) * (trackW - valueRoom) * g;
+          const valueEl = (
+            <span style={{fontFamily: sans, fontWeight: dw, fontSize: labelSize * 1.15, color: b.highlight ? C.ink : C.soft, whiteSpace: 'nowrap', letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums'}}>{display}</span>
           );
           return (
-            <div key={i} style={{display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: isLandscape ? 'center' : 'stretch', gap: (isLandscape ? 24 : 10) * u}}>
-              {label}
-              {track}
+            <div key={i} style={{display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: isLandscape ? 'center' : 'flex-start', gap: (isLandscape ? 30 : 10) * u}}>
+              <div style={{width: labelW, flex: 'none', fontFamily: sans, fontWeight: b.highlight ? dw : 500, fontSize: labelSize, color: b.highlight ? C.ink : C.soft, lineHeight: 1.1, letterSpacing: '-0.01em', opacity: Math.min(1, g * 3)}}>{b.label}</div>
+              <div style={{display: 'flex', alignItems: 'center', width: trackW, height: barH}}>
+                <div style={{width: w, height: barH, background: col, borderRadius: `0 ${Math.min(r * 0.35 * u, barH / 2)}px ${Math.min(r * 0.35 * u, barH / 2)}px 0`, flex: 'none'}} />
+                <div style={{marginLeft: 18 * u, opacity: Math.min(1, Math.max(0, (g - 0.4) * 2.5))}}>
+                  {b.highlight ? (
+                    <Outline progress={prog(frame, cues[i] + 20, 16)} color={C.accent} stroke={3.5 * u} padX={14 * u} padY={4 * u}>
+                      {valueEl}
+                    </Outline>
+                  ) : (
+                    valueEl
+                  )}
+                </div>
+              </div>
             </div>
           );
         })}

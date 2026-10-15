@@ -1,4 +1,5 @@
 // Props contract: see ../../docs/ENGINE_CONTRACT.md and vidxiv/schema.py. Scene keys are camelCase.
+export type Look = 'studio' | 'night' | 'swiss' | 'cobalt';
 export type Tint = '' | 'accent' | 'teal' | 'rose' | 'blue' | 'mustard';
 export type Word = {w: string; s: number; e: number};
 
@@ -43,7 +44,9 @@ export type VideoProps = {
   fps: number;
   total: number;
   title: string;
-  palette: 'paper' | 'ink';
+  look: Look;
+  /** Legacy name for `look`: paper maps to studio, ink to night. */
+  palette?: string;
   captions: boolean;
   progressBar: boolean;
   music: {file: string; volume: number} | null;

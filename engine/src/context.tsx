@@ -2,7 +2,7 @@ import {createContext, useContext, useMemo} from 'react';
 import type {LineProps, VideoProps} from './types';
 import {alignText, cueFrames, findWord, lineSpan} from './timeline';
 
-export const EMPTY_PROPS: VideoProps = {fps: 30, total: 300, title: '', palette: 'paper', captions: true, progressBar: true, music: null, sfx: [], figures: {}, lines: [], scenes: []};
+export const EMPTY_PROPS: VideoProps = {fps: 30, total: 300, title: '', look: 'studio', captions: true, progressBar: true, music: null, sfx: [], figures: {}, lines: [], scenes: []};
 
 export const VideoContext = createContext<VideoProps>(EMPTY_PROPS);
 export const useVideo = () => useContext(VideoContext);

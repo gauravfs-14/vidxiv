@@ -1,10 +1,11 @@
 import React from 'react';
 import {interpolate, useCurrentFrame} from 'remotion';
-import {Underline} from '@remotion/rough-notation';
-import {SANS, SERIF, useTheme} from '../theme';
+import {useTheme} from '../theme';
 import {fitFont, useLayout} from '../layout';
 import {useScene} from '../context';
-import {Split, Stage, clamp, useEnter} from '../components';
+import {Stage, clamp, prog} from '../components';
+import {Rule, Underline} from '../marks';
+import {Reveal} from './primitives';
 import type {SceneOf} from '../types';
 
 /** Split "$1,200.5M" into prefix, number and suffix. Returns null when there is no number to count. */
@@ -16,62 +17,73 @@ export const parseValue = (v: string) => {
 };
 const fmt = (x: number, d: number, commas: boolean) => x.toLocaleString('en-US', {minimumFractionDigits: d, maximumFractionDigits: d, useGrouping: commas});
 
+/** One huge number on a colour field, a rule, then the label and the comparison. */
 export const Stat: React.FC<{scene: SceneOf<'stat'>}> = ({scene}) => {
   const frame = useCurrentFrame();
-  const {u, stage, isLandscape} = useLayout();
-  const {C} = useTheme();
+  const {u, W, H, stage, isLandscape, caption} = useLayout();
+  const {C, sans, mono, dw, dt, look, rgba} = useTheme();
   const S = useScene();
   const cmp = scene.compare;
   const parsed = parseValue(scene.value);
-  const t0 = S.start + 6;
-  const dur = 42;
+  const t0 = S.start + 4;
+  const dur = 40;
   const t = interpolate(frame, [t0, t0 + dur], [0, 1], {...clamp, easing: (x) => 1 - Math.pow(1 - x, 4)});
-  const enter = useEnter(S.start, 14);
-  const colW = cmp && isLandscape ? stage.w * 0.55 : stage.w * 0.96;
-  const size = fitFont(scene.value ?? '', colW, stage.h * (cmp && !isLandscape ? 0.34 : 0.5), 380 * u, 110 * u, 0.5, 0.95);
+  const size = fitFont(scene.value ?? '', stage.w * 0.9, stage.h * (isLandscape ? 0.62 : 0.4), (isLandscape ? 420 : 360) * u, 110 * u, 0.56, 0.9);
   const shown = parsed ? fmt(parsed.target * t, parsed.decimals, parsed.commas) : scene.value;
   const full = parsed ? fmt(parsed.target, parsed.decimals, parsed.commas) : scene.value;
   const smallSuffix = !!parsed && parsed.suffix.trim().length > 1;
-  const labelSize = fitFont(scene.label ?? '', colW, 130 * u, 54 * u, 28 * u, 0.5, 1.2);
+  const colW = isLandscape ? stage.w * 0.46 : stage.w;
+  const labelSize = fitFont(scene.label ?? '', colW, 130 * u, isLandscape ? 56 * u : 54 * u, 28 * u, 0.5, 1.15);
   const cmpAt = cmp ? S.cue(cmp.at, 0.5) : 0;
-  const cp = useEnter(cmpAt, 20);
   const done = t0 + dur;
+  const fieldP = prog(frame, S.start - 4, 22);
+  // In cobalt the whole scene is a flat accent block (edge to edge, ending above the captions).
+  const block = look === 'cobalt';
+  const captionTop = H - caption.bottom - caption.size * 2.4;
+  const ink = block ? C.onAccent : C.ink;
+  const soft = block ? rgba(C.onAccent, 0.72) : C.soft;
+  const numColor = block ? C.onAccent : C.accent;
+  const ruleColor = block ? C.onAccent : C.ink;
 
-  const affix = (s: string, small: boolean) => <span style={{fontSize: small ? size * 0.42 : size, marginLeft: small ? size * 0.06 : 0, letterSpacing: small ? 0 : undefined}}>{s}</span>;
-  const main = (
-    <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 26 * u, opacity: Math.min(1, enter * 1.5), scale: String(0.92 + 0.08 * enter)}}>
-      <Underline color={C.accent} strokeWidth={Math.max(6, size * 0.04)} iterations={2} seed={3} padding={{top: size * 0.0}} progress={interpolate(frame, [done + 2, done + 20], [0, 1], clamp)}>
-        <div style={{fontFamily: SERIF, color: C.accent, lineHeight: 0.95, letterSpacing: -size * 0.02, whiteSpace: 'nowrap', display: 'inline-grid', fontSize: size, paddingBottom: size * 0.08}}>
-          <span style={{gridArea: '1 / 1', visibility: 'hidden'}}>
-            {parsed ? affix(parsed.prefix, false) : null}
-            {parsed ? affix(full, false) : affix(full, false)}
-            {parsed ? affix(parsed.suffix, smallSuffix) : null}
-          </span>
-          <span style={{gridArea: '1 / 1'}}>
-            {parsed ? affix(parsed.prefix, false) : null}
-            {affix(shown, false)}
-            {parsed ? affix(parsed.suffix, smallSuffix) : null}
-          </span>
-        </div>
-      </Underline>
-      <div style={{fontFamily: SANS, fontWeight: 600, fontSize: labelSize, color: C.ink, textAlign: 'center', width: colW, lineHeight: 1.2, marginTop: 10 * u}}>{scene.label}</div>
-      {scene.detail && <div style={{fontFamily: SANS, fontWeight: 500, fontSize: Math.min(labelSize * 0.62, 34 * u), color: C.inkSoft, textAlign: 'center', width: colW * 0.9, lineHeight: 1.3}}>{scene.detail}</div>}
-    </div>
+  const affix = (s: string, small: boolean) => <span style={{fontSize: small ? size * 0.4 : size, marginLeft: small ? size * 0.06 : 0, letterSpacing: small ? 0 : undefined}}>{s}</span>;
+  const number = (
+    <Underline progress={prog(frame, done, 18)} color={numColor} thickness={Math.max(8 * u, size * 0.035)} offset={0.0} style={{alignSelf: 'flex-start'}}>
+      <div style={{fontFamily: sans, fontWeight: dw, color: numColor, lineHeight: 0.92, letterSpacing: `${dt}em`, whiteSpace: 'nowrap', display: 'inline-grid', fontSize: size, paddingBottom: size * 0.1, fontVariantNumeric: 'tabular-nums'}}>
+        <span style={{gridArea: '1 / 1', visibility: 'hidden'}}>
+          {parsed ? affix(parsed.prefix, false) : null}
+          {affix(full, false)}
+          {parsed ? affix(parsed.suffix, smallSuffix) : null}
+        </span>
+        <span style={{gridArea: '1 / 1'}}>
+          {parsed ? affix(parsed.prefix, false) : null}
+          {affix(shown, false)}
+          {parsed ? affix(parsed.suffix, smallSuffix) : null}
+        </span>
+      </div>
+    </Underline>
   );
-  if (!cmp) return <Stage>{main}</Stage>;
-  const cSize = Math.min(size * 0.5, fitFont(cmp.detail ?? '', stage.w * 0.3, 200 * u, 190 * u, 60 * u, 0.5, 1));
+
   return (
-    <Stage>
-      <Split gap={isLandscape ? 80 : 40}>
-        {main}
-        <div style={{display: 'flex', flexDirection: isLandscape ? 'row' : 'column', alignItems: 'center', gap: (isLandscape ? 70 : 28) * u, opacity: Math.min(1, cp * 1.4), translate: `0px ${(1 - cp) * 30 * u}px`}}>
-          <div style={{fontFamily: SERIF, fontStyle: 'italic', fontSize: 64 * u, color: C.inkSoft}}>vs</div>
-          <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 * u}}>
-            <div style={{fontFamily: SERIF, fontSize: cSize, color: C.inkSoft, lineHeight: 1, whiteSpace: 'nowrap'}}>{cmp.detail}</div>
-            <div style={{fontFamily: SANS, fontWeight: 600, fontSize: Math.min(36 * u, labelSize * 0.7), color: C.inkSoft, textAlign: 'center', maxWidth: stage.w * (isLandscape ? 0.26 : 0.8)}}>{cmp.label}</div>
-          </div>
+    <>
+      {block && (
+        <div style={{position: 'absolute', left: 0, top: 0, width: W, height: captionTop - 6 * u, background: C.accent, transformOrigin: '0 0', transform: `scaleY(${fieldP})`}} />
+      )}
+      <Stage v='center' style={{gap: (isLandscape ? 44 : 40) * u}}>
+        <Reveal at={S.start} rise={30} len={20}>{number}</Reveal>
+        <Rule progress={prog(frame, done - 6, 24)} thickness={3 * u} color={ruleColor} />
+        <div style={{display: 'flex', flexDirection: isLandscape ? 'row' : 'column', justifyContent: 'space-between', gap: (isLandscape ? 60 : 34) * u}}>
+          <Reveal at={S.start + 12} rise={14} style={{width: colW, display: 'flex', flexDirection: 'column', gap: 14 * u}}>
+            <div style={{fontFamily: sans, fontWeight: dw, fontSize: labelSize, color: ink, lineHeight: 1.1, letterSpacing: '-0.025em'}}>{scene.label}</div>
+            {scene.detail && <div style={{fontFamily: mono, fontWeight: 500, fontSize: Math.min(labelSize * 0.5, 28 * u), color: soft, lineHeight: 1.3}}>{scene.detail}</div>}
+          </Reveal>
+          {cmp && (
+            <Reveal at={cmpAt} rise={14} style={{width: isLandscape ? (stage.w * 5) / 12 : stage.w, display: 'flex', flexDirection: 'column', gap: 8 * u}}>
+              <div style={{fontFamily: sans, fontWeight: dw, fontSize: Math.min(size * 0.3, 110 * u), color: soft, lineHeight: 1, letterSpacing: `${dt}em`, fontVariantNumeric: 'tabular-nums'}}>{cmp.detail}</div>
+              <div style={{fontFamily: sans, fontWeight: 500, fontSize: Math.min(32 * u, labelSize * 0.6), color: soft, lineHeight: 1.25}}>{cmp.label}</div>
+            </Reveal>
+          )}
         </div>
-      </Split>
-    </Stage>
+      </Stage>
+    </>
   );
 };

@@ -3,6 +3,7 @@ import {Composition} from 'remotion';
 import {Video, normalizeProps} from './Video';
 import sample from './sample.json';
 import type {VideoProps} from './types';
+import {ContactSheet} from './ContactSheet';
 
 export const FORMATS = {
   Vertical: {width: 1080, height: 1920},
@@ -30,5 +31,6 @@ export const RemotionRoot: React.FC = () => (
         }}
       />
     ))}
+    <Composition id="ContactSheet" component={ContactSheet} width={2400} height={1450} fps={1} durationInFrames={1} defaultProps={{columns: []}} />
   </>
 );
