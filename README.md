@@ -5,6 +5,8 @@ Claude Code or Codex CLI you already have installed, the voice is a local model,
 
 ![vidxiv project page](docs/screenshots/script.png)
 
+![The four looks](docs/screenshots/looks.png)
+
 ## What it does
 
 1. **Reads the paper.** Give it an arXiv id, an arXiv link, or a PDF. It extracts the text and cuts the figures out of the PDF.
@@ -14,6 +16,12 @@ Claude Code or Codex CLI you already have installed, the voice is a local model,
    or one long audio file that gets cut into lines by matching it against the script. Mix them per line.
 4. **Renders it.** Vertical (Shorts, Reels, TikTok), landscape (YouTube) or square, with word-synced captions, music and quiet sound effects,
    mastered to about -14 LUFS.
+
+You choose the length (short 45 s, medium 90 s, long 3 min, or any custom value from 20 s to 10 min) and the level of detail
+(overview, balanced, in depth). Very long videos use a lot of agent tokens, and the app warns you above 5 minutes.
+
+Four looks are built in: `studio` (cool light, blue), `night` (graphite, emerald), `swiss` (white grid, signal red) and `cobalt` (saturated blue, yellow).
+Choose one, or leave it on Auto and the agent picks the one that suits the paper. The design rules live in `skills/video-taste/`.
 
 Scenes are drawn from a fixed set: hook, title, concept, steps, figure (with zoom and callouts), stat, bars, compare, equation, quote, outro.
 The agent only fills in content, so a bad answer fails validation instead of breaking a render.
@@ -41,16 +49,16 @@ Open http://127.0.0.1:8420. The first render installs the video engine, which ta
 ## Making a video
 
 1. Enter an arXiv id (for example `1706.03762`) or drop a PDF.
-2. Choose how the script is written, a length and an agent, then select **Write script**. Edit any line, scene or figure. Use **Preview scenes** to see stills.
+2. Choose how the script is written, a length, a level of detail and an agent, then select **Write script**. Edit any line, scene or figure. Use **Preview scenes** to see stills.
 3. Pick a voice, or record or upload your own per line. Select **Generate narration**. Rendering narrates anything still missing.
-4. Choose formats, palette, captions and music, then select **Render video**.
+4. Choose formats, look, captions and music, then select **Render video**.
 
 Everything for a project is in `workspace/jobs/<id>/`: the paper, figures, `storyboard.json`, narration clips and the finished MP4 files.
 
 ### From the command line
 
 ```bash
-uv run vidxiv make 1706.03762 --length short --format Vertical --format Landscape
+uv run vidxiv make 1706.03762 --seconds 90 --detail balanced --look swiss --format Vertical --format Landscape
 uv run vidxiv make paper.pdf --agent codex --script my-narration.txt --audio my-reading.m4a
 ```
 
@@ -61,11 +69,11 @@ For each script request vidxiv prepares the project folder and runs the CLI insi
 - `claude -p ... --permission-mode acceptEdits` with only Read, Write, Edit, Glob, Grep and the `./validate.sh` helper allowed.
 - `codex exec --sandbox workspace-write` in the same folder.
 
-The folder contains `skills/paper-video` and `skills/unslop` (also placed in `.claude/skills`), `brief.json`, `paper/paper.md`, the figure images, and the storyboard schema.
+The folder contains `skills/paper-video`, `skills/video-taste` and `skills/unslop` (also placed in `.claude/skills`), `brief.json`, `paper/paper.md`, the figure images, and the storyboard schema.
 The agent writes `storyboard.json` and runs `./validate.sh` until it passes. vidxiv validates the file again before using it, retries with the errors if needed,
 and cleans dashes and curly quotes mechanically. The paper text is treated as data, not instructions.
 
-To use the skills outside vidxiv, run `uv run vidxiv install-skills`. It copies `paper-video` and `unslop` to `~/.claude/skills` and `~/.agents/skills`.
+To use the skills outside vidxiv, run `uv run vidxiv install-skills`. It copies `paper-video`, `video-taste` and `unslop` to `~/.claude/skills` and `~/.agents/skills`.
 
 ## Project layout
 
@@ -73,7 +81,7 @@ To use the skills outside vidxiv, run `uv run vidxiv install-skills`. It copies 
 vidxiv/            Python package: API server, jobs, paper parsing, agents, voice, render
 vidxiv/web/        the web UI (plain HTML, CSS and ES modules, no build step)
 engine/            Remotion project that draws the scenes (see engine/README.md)
-skills/            paper-video and unslop skills used by the agents
+skills/            paper-video, video-taste and unslop skills used by the agents (design-taste-frontend is the source for the UI design rules)
 docs/              engine contract and screenshots
 tests/             pytest tests for the pure logic
 ```
