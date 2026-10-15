@@ -106,6 +106,40 @@ def save_storyboard(job: Job, data: dict) -> tuple[dict | None, list[str]]:
     if problems:
         return None, problems
     clean = schema.parse(data).model_dump(by_alias=True, exclude_none=True)
+    _remap_clips(job, [ln["text"] for ln in (job.storyboard() or {"lines": []})["lines"]], [ln["text"] for ln in clean["lines"]])
     job.storyboard_path.write_text(json.dumps(clean, indent=2))
     job.patch(title=clean["title"])
     return clean, []
+
+
+def _remap_clips(job: Job, old: list[str], new: list[str]) -> None:
+    """Recordings follow their text when lines are reordered, added or deleted. Edited lines keep their slot."""
+    mapping: dict[int, int] = {}  # new index -> old index
+    used: set[int] = set()
+    for j, t in enumerate(new):
+        i = next((i for i, o in enumerate(old) if o == t and i not in used), None)
+        if i is not None:
+            mapping[j] = i
+            used.add(i)
+    for j in range(min(len(new), len(old))):
+        if j not in mapping and j not in used:
+            mapping[j] = j
+            used.add(j)
+    if all(j == i for j, i in mapping.items()) and len(new) >= len(old):
+        return
+    udir = job.dir / "narration" / "user"
+    stash = udir / "_stash"
+    stash.mkdir(parents=True, exist_ok=True)
+    for i in range(len(old)):
+        f = udir / f"line-{i}.wav"
+        if f.exists():
+            f.rename(stash / f.name)
+    for j, i in mapping.items():
+        f = stash / f"line-{i}.wav"
+        if f.exists():
+            f.rename(udir / f"line-{j}.wav")
+    shutil.rmtree(stash, ignore_errors=True)
+
+    def clips(s):
+        s["narration"]["clips"] = {str(j): s["narration"]["clips"][str(i)] for j, i in mapping.items() if str(i) in s["narration"]["clips"]}
+    job.update(clips)

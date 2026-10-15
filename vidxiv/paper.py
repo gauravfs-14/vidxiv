@@ -222,26 +222,19 @@ def extract_figures(doc: pymupdf.Document, out_dir: Path, log=print) -> list[dic
                 return found
     if found:
         return found
-    # no captioned figures: fall back to large embedded images
+    # no captioned figures: render large embedded images from the page, flattened onto white
     done: set[int] = set()
     for pno, page in enumerate(doc):
-        for img in page.get_images(full=True):
-            xref = img[0]
-            if xref in done:
+        for info in page.get_image_info(xrefs=True):
+            xref, r = info.get("xref"), pymupdf.Rect(info["bbox"])
+            if not xref or xref in done or info.get("width", 0) < 360 or info.get("height", 0) < 240 or r.width < 100 or r.height < 80:
                 continue
             done.add(xref)
-            try:
-                pix = pymupdf.Pixmap(doc, xref)
-                if pix.width < 360 or pix.height < 240:
-                    continue
-                if pix.n - pix.alpha >= 4:
-                    pix = pymupdf.Pixmap(pymupdf.csRGB, pix)
-                fid = f"fig-{len(found) + 1:02d}"
-                pix.save(out_dir / f"{fid}.png")
-                found.append({"id": fid, "file": f"{fid}.png", "page": pno + 1, "label": f"Image {len(found) + 1}",
-                              "caption": "", "width": pix.width, "height": pix.height})
-            except Exception:  # noqa: BLE001
-                continue
+            fid = f"fig-{len(found) + 1:02d}"
+            pix = _autocrop(page.get_pixmap(clip=r & page.rect, dpi=200, alpha=False))
+            pix.save(out_dir / f"{fid}.png")
+            found.append({"id": fid, "file": f"{fid}.png", "page": pno + 1, "label": f"Image {len(found) + 1}",
+                          "caption": "", "width": pix.width, "height": pix.height})
             if len(found) >= MAX_FIGURES:
                 return found
     return found
