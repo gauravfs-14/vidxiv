@@ -8,6 +8,7 @@ import { createNarration } from "./narration.js";
 import { createVideo } from "./video.js";
 import { confirmDialog, toast, errorMessage, chip, statusMark, themeControl, skel } from "../ui.js";
 import { navigate, jobHref, replaceHash, STAGE_KEYS } from "../router.js";
+import { createPdfPanel } from "../pdf-panel.js";
 
 const STAGES = [
   { key: "paper", name: "Paper", sub: "Source text and figures", make: createPaper },
@@ -59,6 +60,7 @@ export function mountJob(root, id, initialStage) {
         bar.firstChild.style.transform = `scaleX(${Math.max(0.03, Math.min(1, progress || 0))})`;
       },
       go: (key) => { replaceHash(jobHref(id, key)); setStage(key); },
+      openPdf: (page) => pdf.open(page),
     };
     host.setStatus("idle", "");
     return host;
@@ -88,11 +90,15 @@ export function mountJob(root, id, initialStage) {
     });
   }
 
+  const appEl = h("div.app");
+  const pdf = createPdfPanel({ jobId: id, app: appEl });
+  const pdfBtn = pdf.button();
   const rail = h("aside.rail", { "aria-label": "Project" },
     h("a.brand", { href: "#/", "aria-label": "vidxiv, all projects" }, h("span.brand-mark", { "aria-hidden": "true" }), "vidxiv"),
     h("a.back", { href: "#/" }, icon("arrow-left", 14), "All projects"),
     h("div.rail-project", title, meta),
     h("nav", { "aria-label": "Stages" }, h("ol.steps", hosts.map((x) => h("li", x.link)))),
+    h("div.rail-tools", pdfBtn),
     h("div.rail-foot", del, themeControl()));
 
   const loading = h("div.pane-loading", { "aria-busy": "true", "aria-label": "Loading project" },
@@ -102,7 +108,8 @@ export function mountJob(root, id, initialStage) {
     h("p.muted", "It may have been deleted. Go back to your projects."),
     h("a.btn", { href: "#/" }, "All projects"));
   const main = h("div.workspace", loading, ...hosts.map((x) => x.el), missing);
-  root.append(h("div.app", rail, main));
+  appEl.append(rail, main, pdf.el);
+  root.append(appEl);
 
   function setStage(key) {
     if (!STAGE_KEYS.includes(key)) return;
@@ -123,11 +130,13 @@ export function mountJob(root, id, initialStage) {
     if (!job) {
       rail.querySelector(".rail-project").hidden = true;
       rail.querySelector("nav").hidden = true;
+      pdfBtn.hidden = true;
       del.hidden = true;
       hosts.forEach((x) => { x.el.hidden = true; });
       loading.hidden = true; missing.hidden = false;
       return;
     }
+    pdfBtn.hidden = !job.hasPdf;
     document.title = `${job.title} - vidxiv`;
     replace(title, job.title || "Untitled");
     replace(meta, job.source.type === "arxiv" ? `arXiv:${job.source.id}` : job.source.filename || "PDF upload");
@@ -155,6 +164,6 @@ export function mountJob(root, id, initialStage) {
 
   return {
     setStage,
-    unmount() { unsub(); store.stop(); part.forEach((p) => p.destroy?.()); document.title = "vidxiv"; },
+    unmount() { unsub(); store.stop(); pdf.destroy(); part.forEach((p) => p.destroy?.()); document.title = "vidxiv"; },
   };
 }

@@ -308,7 +308,10 @@ def ingest(job_dir: Path, source: dict, upload: Path | None = None, log=print) -
         meta.update(fetch_arxiv(source["id"], pdir, log))
     else:
         assert upload is not None
-        shutil.copy(upload, pdir / "paper.pdf")
+        if upload.parent == pdir:  # the server's own temporary upload: no need to keep two copies
+            upload.replace(pdir / "paper.pdf")
+        else:
+            shutil.copy(upload, pdir / "paper.pdf")
     log("Reading the PDF")
     try:
         doc = pymupdf.open(pdir / "paper.pdf")

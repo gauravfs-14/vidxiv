@@ -48,7 +48,8 @@ export function createPaper({ store, sec }) {
           ? h("ul.figs", { "aria-label": "Extracted figures" },
             figs.map((f, i) => h("li", h("button.fig", { type: "button", onclick: () => lightbox(items, i), "aria-label": `Open ${f.label}: ${f.caption}` },
               h("span.fig-img", h("img", { src: f.url, alt: "", loading: "lazy" })),
-              h("span.fig-label", f.label)))))
+              h("span.fig-label", f.label)),
+            f.page && h("button.link-btn.fig-page", { type: "button", onclick: () => sec.openPdf(f.page) }, `Page ${f.page} in PDF`))))
           : h("p.muted", "No figures were extracted. Scenes will use text only.")));
     fit = () => {
       if (!abstract.offsetParent) return; // hidden pane: measure when it is shown
