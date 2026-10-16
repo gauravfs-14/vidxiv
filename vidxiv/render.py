@@ -13,7 +13,7 @@ from pathlib import Path
 import requests
 import soundfile as sf
 
-from . import config, script, voice
+from . import config, schema, script, voice
 from .jobs import Job, slug
 
 REMOTION_SFX = ("whoosh", "whip", "page-turn", "switch", "mouse-click", "ding")
@@ -114,7 +114,7 @@ def build_props(job: Job, estimated_ok: bool) -> tuple[dict, dict[int, Path]]:
                for fid, f in figs.items() if fid in used or len(figs) <= 12}
     music_mood = brief.get("music", "warm")
     props = {
-        "fps": config.FPS, "total": total, "title": sb["title"], "look": sb.get("look", "studio") if brief.get("look", "auto") == "auto" else brief["look"],
+        "fps": config.FPS, "total": total, "title": sb["title"], "look": resolve_looks(brief, sb)[0],
         "captions": bool(brief.get("captions", True)), "progressBar": True,
         "music": None, "sfx": [], "figures": figures, "lines": lines, "scenes": scenes,
         "_musicMood": music_mood,
@@ -218,13 +218,28 @@ def master(src: Path, dst: Path) -> None:
                     "-movflags", "+faststart", str(dst)], check=True, stdin=subprocess.DEVNULL)
 
 
+def resolve_looks(brief: dict, sb: dict) -> list[str]:
+    """Looks to render. 'auto' means the one the storyboard was written for. Order kept, duplicates dropped."""
+    wanted = brief.get("looks") or [brief.get("look", "auto")]
+    out: list[str] = []
+    for look in wanted:
+        look = sb.get("look", "studio") if look == "auto" else look
+        if look in schema.LOOKS and look not in out:
+            out.append(look)
+    return out or [sb.get("look", "studio")]
+
+
 def render(job: Job) -> None:
+    """Render every selected look in every selected format. Earlier renders are kept: each run adds new files."""
+    import time
+
     stage = "render"
     state = job.load()
     formats = [f for f in state["brief"].get("formats", ["Vertical"]) if f in config.FORMATS] or ["Vertical"]
     sb = job.storyboard()
     if not sb:
         raise RuntimeError("There is no storyboard yet")
+    looks = resolve_looks(state["brief"], sb)
     # narrate anything missing or stale
     stale = [i for i, ln in enumerate(sb["lines"])
              if state["narration"]["clips"].get(str(i), {}).get("thash") != voice.text_hash(ln["text"]) or not voice.line_wav(job, i).exists()]
@@ -236,31 +251,50 @@ def render(job: Job) -> None:
     b = bundle(job, stage)
     out_dir = job.dir / "out"
     out_dir.mkdir(exist_ok=True)
-    outputs = []
-    for k, fmt in enumerate(formats):
-        base = 0.1 + 0.85 * k / len(formats)
-        span = 0.85 / len(formats)
-        raw = out_dir / f"raw-{fmt.lower()}.mp4"
-        name = f"{slug(sb['title'])}-{fmt.lower()}.mp4"
-        job.progress(stage, base, f"Rendering {fmt}")
+    run = 1 + max((o.get("run", 0) for o in job.load().get("outputs", [])), default=0)
+    combos = [(look, fmt) for look in looks for fmt in formats]
+    for k, (look, fmt) in enumerate(combos):
+        base = 0.1 + 0.88 * k / len(combos)
+        span = 0.88 / len(combos)
+        label = f"{look} {fmt.lower()}"
+        stem = f"{slug(sb['title'])}-{look}-{fmt.lower()}-r{run}"
+        pf = job.dir / f"render-{look}.json"
+        pf.write_text(json.dumps({**props, "look": look}))
+        raw = out_dir / f"raw-{stem}.mp4"
+        job.progress(stage, base, f"Rendering {label}")
 
-        def on_line(line: str, base=base, span=span, fmt=fmt) -> None:
+        def on_line(line: str, base=base, span=span, label=label) -> None:
             m = re.search(r"(\d+)/(\d+)", line)
             if m and int(m.group(2)) > 1:
-                job.progress(stage, base + span * 0.92 * int(m.group(1)) / int(m.group(2)), f"Rendering {fmt}: frame {m.group(1)} of {m.group(2)}")
+                job.progress(stage, base + span * 0.92 * int(m.group(1)) / int(m.group(2)), f"Rendering {label}: frame {m.group(1)} of {m.group(2)}")
             elif line.strip():
                 job.log(stage, line)
 
-        _npx(job, stage, ["render", str(b), fmt, str(raw), f"--props={props_file}", "--codec=h264", "--crf=22",
+        _npx(job, stage, ["render", str(b), fmt, str(raw), f"--props={pf}", "--codec=h264", "--crf=22",
                           "--audio-bitrate=320k", "--log=info"], on_line=on_line)
-        job.progress(stage, base + span * 0.94, f"Mastering {fmt} audio")
-        final = out_dir / name
+        job.progress(stage, base + span * 0.94, f"Mastering {label} audio")
+        final = out_dir / f"{stem}.mp4"
         master(raw, final)
         raw.unlink(missing_ok=True)
         poster = final.with_suffix(".jpg")
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-ss", "2", "-i", str(final), "-frames:v", "1", "-vf", "scale=480:-1", str(poster)],
                        stdin=subprocess.DEVNULL)
-        outputs.append({"format": fmt, "file": f"out/{name}", "poster": f"out/{poster.name}" if poster.exists() else None,
-                        "size": final.stat().st_size, "seconds": round(props["total"] / config.FPS, 1), "created": __import__("time").time()})
+        entry = {"id": stem, "run": run, "look": look, "format": fmt, "file": f"out/{final.name}",
+                 "poster": f"out/{poster.name}" if poster.exists() else None, "size": final.stat().st_size,
+                 "seconds": round(props["total"] / config.FPS, 1), "created": time.time()}
+        job.update(lambda s, e=entry: s["outputs"].append(e))  # saved as soon as it exists
     shutil.rmtree(b, ignore_errors=True)
-    job.patch(outputs=outputs)
+
+
+def delete_output(job: Job, output_id: str) -> None:
+    def drop(s):
+        keep = []
+        for o in s.get("outputs", []):
+            if o.get("id", o["file"]) == output_id:
+                for f in (o["file"], o.get("poster")):
+                    if f:
+                        (job.dir / f).unlink(missing_ok=True)
+            else:
+                keep.append(o)
+        s["outputs"] = keep
+    job.update(drop)

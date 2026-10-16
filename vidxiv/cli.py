@@ -129,7 +129,7 @@ def cmd_make(a) -> int:
             return 2
         job = jobs.create({"type": "arxiv", "id": aid, "url": f"https://arxiv.org/abs/{aid}"}, f"arXiv:{aid}")
         pipeline.start_ingest(job)
-    job.update(lambda s: s["brief"].update(seconds=a.seconds, detail=a.detail, formats=a.format, look=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
+    job.update(lambda s: s["brief"].update(seconds=a.seconds, detail=a.detail, formats=a.format, look=a.look[0], looks=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
     if a.voice:
         job.update(lambda s: s["narration"].update(voice=a.voice))
 
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("--seconds", type=int, default=45, help="target narration length, 20 to 600")
     m.add_argument("--detail", default="balanced", choices=["overview", "balanced", "deep"])
     m.add_argument("--format", action="append", default=None, choices=["Vertical", "Landscape", "Square"])
-    m.add_argument("--look", default="auto", choices=["auto", "studio", "night", "swiss", "cobalt"])
+    m.add_argument("--look", action="append", default=None, help="repeat to render several looks", choices=["auto", "studio", "night", "swiss", "cobalt"])
     m.add_argument("--music", default="warm", choices=["warm", "bright", "calm", "night", "none"])
     m.add_argument("--voice", default="")
     m.add_argument("--script", help="text file with your own narration")
@@ -205,8 +205,9 @@ def main(argv: list[str] | None = None) -> int:
     a = p.parse_args(argv)
     if not a.cmd:
         a = p.parse_args(["serve"])
-    if a.cmd == "make" and not a.format:
-        a.format = ["Vertical"]
+    if a.cmd == "make":
+        a.format = a.format or ["Vertical"]
+        a.look = a.look or ["auto"]
     return a.fn(a)
 
 

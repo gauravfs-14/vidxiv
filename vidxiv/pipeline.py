@@ -23,6 +23,7 @@ def start_ingest(job: Job, upload: Path | None = None) -> None:
 def start_script(job: Job, agent: str, model: str, mode: str, text: str = "") -> None:
     """mode: generate (agent writes narration and scenes), provided (user text, agent picks scenes), transcript (from recorded audio)."""
     def work():
+        archive_storyboard(job)
         sb = None
         fixed: list[str] | None = None
         paper_info = job.paper() or {}
@@ -144,3 +145,38 @@ def _remap_clips(job: Job, old: list[str], new: list[str]) -> None:
     def clips(s):
         s["narration"]["clips"] = {str(j): s["narration"]["clips"][str(i)] for j, i in mapping.items() if str(i) in s["narration"]["clips"]}
     job.update(clips)
+
+
+def archive_storyboard(job: Job) -> None:
+    """Keep the current script as a version before it is replaced."""
+    import time
+
+    sb = job.storyboard()
+    if not sb:
+        return
+    d = job.dir / "storyboards"
+    d.mkdir(exist_ok=True)
+    (d / f"sb-{int(time.time())}.json").write_text(json.dumps(sb, indent=2))
+
+
+def storyboard_versions(job: Job) -> list[dict]:
+    out = []
+    for f in sorted((job.dir / "storyboards").glob("sb-*.json"), reverse=True):
+        try:
+            sb = json.loads(f.read_text())
+        except ValueError:
+            continue
+        out.append({"id": f.stem, "created": int(f.stem[3:]), "title": sb.get("title", ""), "lines": len(sb.get("lines", [])),
+                    "preview": sb["lines"][0]["text"][:90] if sb.get("lines") else ""})
+    return out
+
+
+def restore_storyboard(job: Job, version_id: str) -> None:
+    f = job.dir / "storyboards" / f"{version_id}.json"
+    if not f.exists() or not version_id.startswith("sb-"):
+        raise ValueError("No such script version")
+    data = json.loads(f.read_text())
+    archive_storyboard(job)
+    saved, problems = save_storyboard(job, data)
+    if problems:
+        raise ValueError("That version no longer validates: " + "; ".join(problems[:2]))

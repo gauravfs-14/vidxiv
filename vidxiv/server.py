@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import __version__, agents, config, jobs, paper, pipeline, render, script, voice
+from . import __version__, agents, config, jobs, paper, pipeline, render, schema, script, voice
 from .jobs import Job
 
 @asynccontextmanager
@@ -112,8 +112,13 @@ def view(job: Job) -> dict:
     s["storyboard"] = sb
     s["lint"] = script.lint_storyboard(sb) if sb else {}
     s["figures"] = [{**f, "url": f"/files/{job.id}/paper/figures/{f['file']}"} for f in job.figures()]
+    for o in s.get("outputs", []):  # renders made before versions existed
+        o.setdefault("id", o["file"])
+        o.setdefault("run", 1)
+        o.setdefault("look", "studio")
     s["outputs"] = [{**o, "url": f"/files/{job.id}/{o['file']}", "posterUrl": f"/files/{job.id}/{o['poster']}" if o.get("poster") else None} for o in s.get("outputs", [])]
     s["previews"] = [f"/files/{job.id}/{p}" for p in s.get("previews", [])]
+    s["scriptVersions"] = pipeline.storyboard_versions(job)
     s["hasPdf"] = (job.dir / "paper" / "paper.pdf").exists()
     return s
 
@@ -216,6 +221,13 @@ def make_script(job_id: str, body: ScriptBody):
     return view(job)
 
 
+@app.post("/api/jobs/{job_id}/storyboard/restore/{version_id}")
+def restore_script(job_id: str, version_id: str):
+    job = get_job(job_id)
+    pipeline.restore_storyboard(job, version_id)
+    return view(job)
+
+
 @app.put("/api/jobs/{job_id}/storyboard")
 def put_storyboard(job_id: str, body: dict):
     job = get_job(job_id)
@@ -300,6 +312,7 @@ class RenderBody(BaseModel):
     formats: list[str] | None = None
     captions: bool | None = None
     look: str | None = None
+    looks: list[str] | None = None
     music: str | None = None
 
 
@@ -310,9 +323,23 @@ def make_render(job_id: str, body: RenderBody | None = None):
         raise RuntimeError("Write the script first")
     if body:
         patch = {k: v for k, v in body.model_dump().items() if v is not None}
+        if "look" in patch and "looks" not in patch:
+            patch["looks"] = [patch.pop("look")]
+        patch.pop("look", None)
+        if "looks" in patch:
+            bad = [x for x in patch["looks"] if x != "auto" and x not in schema.LOOKS]
+            if bad or not patch["looks"]:
+                raise ValueError("Choose at least one look: auto, " + ", ".join(schema.LOOKS))
         if patch:
             job.update(lambda s: s["brief"].update(patch))
     pipeline.start_render(job)
+    return view(job)
+
+
+@app.delete("/api/jobs/{job_id}/outputs/{output_id}")
+def delete_output(job_id: str, output_id: str):
+    job = get_job(job_id)
+    render.delete_output(job, output_id)
     return view(job)
 
 

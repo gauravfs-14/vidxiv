@@ -180,7 +180,7 @@ def create(source: dict, title: str = "Untitled") -> Job:
 
 def default_brief() -> dict:
     return {
-        "seconds": 45, "detail": "balanced", "formats": ["Vertical"], "look": "auto", "captions": True, "music": "warm",
+        "seconds": 45, "detail": "balanced", "formats": ["Vertical"], "look": "auto", "looks": ["auto"], "captions": True, "music": "warm",
         "agent": "auto", "model": "", "instructions": "", "scriptMode": "generate", "providedText": "",
     }
 
