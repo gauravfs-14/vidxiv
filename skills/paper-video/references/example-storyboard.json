@@ -1,0 +1,208 @@
+{
+  "title": "Attention Is All You Need",
+  "source": "arXiv:1706.03762",
+  "look": "studio",
+  "lines": [
+    {
+      "text": "In 2017, a translation model with no recurrence beat every system before it.",
+      "scene": {
+        "type": "hook",
+        "headline": "No recurrence. Better translation.",
+        "circle": "No"
+      },
+      "highlight": {
+        "recurrence": "rose"
+      },
+      "gapAfter": 18
+    },
+    {
+      "text": "It is called the Transformer, from Vaswani and seven colleagues at Google.",
+      "scene": {
+        "type": "title",
+        "title": "Attention Is All You Need",
+        "authors": "Vaswani, Shazeer, Parmar et al.",
+        "meta": "arXiv:1706.03762 / 2017"
+      },
+      "highlight": {
+        "Transformer,": "accent"
+      }
+    },
+    {
+      "text": "Before it, models read a sentence one word at a time, so each step waited for the last.",
+      "scene": {
+        "type": "compare",
+        "left": {
+          "title": "Recurrent models",
+          "points": [
+            "One word at a time",
+            "Steps cannot run in parallel"
+          ],
+          "tint": "rose"
+        },
+        "right": {
+          "title": "What was needed",
+          "points": [
+            "See the whole sentence",
+            "Train on many GPUs"
+          ],
+          "tint": "teal"
+        }
+      },
+      "highlight": {
+        "one": "rose",
+        "waited": "rose"
+      },
+      "kicker": "The problem"
+    },
+    {
+      "text": "The Transformer replaces that loop with attention. Every word looks at every other word, all at once.",
+      "scene": {
+        "type": "figure",
+        "figure": "fig-01",
+        "caption": "The architecture",
+        "zoom": {
+          "x": 0.0,
+          "y": 0.35,
+          "w": 0.55,
+          "h": 0.65,
+          "at": "attention."
+        },
+        "callouts": []
+      },
+      "highlight": {
+        "attention.": "accent",
+        "all": "blue"
+      },
+      "kicker": "The idea"
+    },
+    {
+      "text": "Each word makes a query, and asks every other word's key how relevant it is.",
+      "scene": {
+        "type": "steps",
+        "heading": "One attention step",
+        "steps": [
+          {
+            "label": "Query",
+            "detail": "what am I looking for",
+            "at": "query,"
+          },
+          {
+            "label": "Keys",
+            "detail": "what each word offers",
+            "at": "key"
+          },
+          {
+            "label": "Weights",
+            "detail": "how relevant",
+            "at": "relevant"
+          }
+        ]
+      },
+      "highlight": {
+        "query,": "blue",
+        "key": "teal"
+      },
+      "kicker": "How it works"
+    },
+    {
+      "text": "The relevance scores are softmaxed and used to mix the values.",
+      "scene": {
+        "type": "equation",
+        "formula": "\\mathrm{softmax}\\left(\\frac{QK^{T}}{\\sqrt{d_k}}\\right)V",
+        "caption": "Scaled dot-product attention",
+        "terms": [
+          {
+            "label": "QK",
+            "detail": "relevance of each pair",
+            "at": "relevance"
+          },
+          {
+            "label": "softmax",
+            "detail": "scores become weights",
+            "at": "softmaxed"
+          },
+          {
+            "label": "V",
+            "detail": "what gets mixed",
+            "at": "values."
+          }
+        ]
+      },
+      "highlight": {},
+      "kicker": "How it works"
+    },
+    {
+      "text": "On English to German it scored 28.4 BLEU. The best earlier system scored about 26.",
+      "scene": {
+        "type": "bars",
+        "title": "BLEU, English to German",
+        "unit": "BLEU",
+        "bars": [
+          {
+            "label": "Earlier best",
+            "value": 26.4,
+            "highlight": false,
+            "at": "earlier"
+          },
+          {
+            "label": "Transformer",
+            "value": 28.4,
+            "highlight": true,
+            "at": "28.4"
+          }
+        ]
+      },
+      "highlight": {
+        "28.4": "teal"
+      },
+      "kicker": "Results"
+    },
+    {
+      "text": "And it trained in 3.5 days on eight GPUs, a small fraction of the cost of the older models.",
+      "scene": {
+        "type": "stat",
+        "value": "3.5 days",
+        "label": "training time on 8 GPUs",
+        "detail": "Older models needed far more compute"
+      },
+      "highlight": {
+        "3.5": "accent"
+      },
+      "kicker": "Results"
+    },
+    {
+      "text": "The paper tests translation and parsing. It does not show that attention alone is best for every task.",
+      "scene": {
+        "type": "concept",
+        "heading": "What the paper tests",
+        "items": [
+          {
+            "label": "Translation",
+            "detail": "two language pairs",
+            "at": "translation"
+          },
+          {
+            "label": "Parsing",
+            "detail": "English constituency",
+            "at": "parsing."
+          }
+        ]
+      },
+      "highlight": {},
+      "kicker": "Limits"
+    },
+    {
+      "text": "Attention made training parallel, and that is what let models grow.",
+      "scene": {
+        "type": "outro",
+        "headline": "Attention made scale possible",
+        "takeaway": "Parallel training let models grow.",
+        "cta": "Read the paper",
+        "link": "arxiv.org/abs/1706.03762"
+      },
+      "highlight": {
+        "parallel": "accent"
+      }
+    }
+  ]
+}

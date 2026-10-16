@@ -1,0 +1,186 @@
+"""Stage workers. Each runs inside jobs.background() so progress and errors land in job.json."""
+from __future__ import annotations
+
+import json
+import shutil
+from pathlib import Path
+
+from . import agents, config, jobs, paper, render, schema, script, voice
+from .jobs import Job
+
+
+def start_ingest(job: Job, upload: Path | None = None) -> None:
+    def work():
+        log = lambda m: (job.log("ingest", m), job.progress("ingest", 0.5, m))  # noqa: E731
+        job.progress("ingest", 0.1, "Fetching the paper")
+        state = job.load()
+        info = paper.ingest(job.dir, state["source"], upload, log)
+        figures = job.figures()
+        job.patch(title=info["title"] or state["title"], paper={k: info[k] for k in ("title", "authors", "abstract", "url", "published", "pages", "sections")} | {"figureCount": len(figures)})
+    jobs.background(job, "ingest", work)
+
+
+def start_script(job: Job, agent: str, model: str, mode: str, text: str = "") -> None:
+    """mode: generate (agent writes narration and scenes), provided (user text, agent picks scenes), transcript (from recorded audio)."""
+    def work():
+        archive_storyboard(job)
+        sb = None
+        fixed: list[str] | None = None
+        paper_info = job.paper() or {}
+        figures = job.figures()
+        brief = job.load()["brief"]
+        if mode == "transcript":
+            take = next((p for p in (job.dir / "narration").glob("take-upload.*")), None)
+            if not take:
+                raise RuntimeError("Upload the recording first")
+            job.progress("script", 0.05, "Transcribing the recording")
+            fixed = voice.transcript_lines(job, take)
+            job.log("script", f"Transcribed {len(fixed)} lines")
+        else:  # new lines invalidate old recordings
+            shutil.rmtree(job.dir / "narration" / "user", ignore_errors=True)
+            job.update(lambda s: s["narration"].update(clips={}))
+        if mode == "provided":
+            fixed = script.split_script(text)
+            if not fixed:
+                raise RuntimeError("The script text is empty")
+            job.log("script", f"Using your script: {len(fixed)} lines")
+        chosen = agents.pick(agent)
+        if fixed is not None:
+            job.patch(narrationText=fixed)
+        if chosen is None:
+            if agent not in ("auto", "none"):
+                raise RuntimeError(f"The {agent} CLI was not found on this machine")
+            job.log("script", "No agent CLI in use, building scenes with simple rules")
+            if fixed is None:
+                sb = script.fallback_storyboard(paper_info, figures, config.target(brief)[0], brief.get("look", "auto"))
+            else:
+                sb = script.assign_scenes(fixed, paper_info, figures, brief.get("look", "auto"))
+            sb, problems = agents.finalize(sb, {f["id"] for f in figures}, fixed)
+            if problems:
+                raise RuntimeError("; ".join(problems[:3]))
+            job.storyboard_path.write_text(json.dumps(sb, indent=2))
+        else:
+            sb = agents.generate_storyboard(job, chosen, model, fixed)
+        if brief.get("look", "auto") != "auto":
+            sb["look"] = brief["look"]
+        job.storyboard_path.write_text(json.dumps(sb, indent=2))
+        job.patch(title=sb["title"] or job.load()["title"])
+        job.progress("script", 1, f"{len(sb['lines'])} lines written")
+    jobs.background(job, "script", work)
+
+
+def start_narration(job: Job, only: list[int] | None = None) -> None:
+    jobs.background(job, "narration", lambda: voice.run_narration(job, only))
+
+
+def start_split(job: Job, audio: Path, marks: list[dict] | None = None) -> None:
+    """Cut one uploaded or recorded take into line clips using the current script, then align every line."""
+    def work():
+        sb = job.storyboard()
+        if not sb:
+            raise RuntimeError("Write the script first, then upload the recording")
+        job.progress("narration", 0.1, "Transcribing and matching your take to the script")
+        if marks:
+            job.log("narration", "Cutting your take at the moments you pressed next line")
+            res = voice.split_by_marks(job, audio, marks, len(sb["lines"]))
+        else:
+            res = voice.split_take(job, audio, [ln["text"] for ln in sb["lines"]])
+        job.log("narration", f"Matched {len(res['matched'])} lines" + (f", missing: {[m + 1 for m in res['missing']]}" if res["missing"] else ""))
+        voice.run_narration(job)
+        if res["missing"]:
+            job.set_stage("narration", message=f"Lines {', '.join(str(m + 1) for m in res['missing'])} were not found in the recording and use the synthetic voice")
+    jobs.background(job, "narration", work)
+
+
+def start_preview(job: Job) -> None:
+    jobs.background(job, "preview", lambda: render.preview(job))
+
+
+def start_render(job: Job) -> None:
+    jobs.background(job, "render", lambda: render.render(job))
+
+
+def save_storyboard(job: Job, data: dict) -> tuple[dict | None, list[str]]:
+    """Validate and store an edited storyboard. Returns (saved, problems)."""
+    fig_ids = {f["id"] for f in job.figures()}
+    data = script.prune(data)
+    for ln in data.get("lines", []):
+        if isinstance(ln, dict) and isinstance(ln.get("text"), str):
+            ln["text"] = script.clean(ln["text"])
+    schema.repair(data)
+    problems = schema.check(data, fig_ids)
+    if problems:
+        return None, problems
+    clean = schema.parse(data).model_dump(by_alias=True, exclude_none=True)
+    _remap_clips(job, [ln["text"] for ln in (job.storyboard() or {"lines": []})["lines"]], [ln["text"] for ln in clean["lines"]])
+    job.storyboard_path.write_text(json.dumps(clean, indent=2))
+    job.patch(title=clean["title"])
+    return clean, []
+
+
+def _remap_clips(job: Job, old: list[str], new: list[str]) -> None:
+    """Recordings follow their text when lines are reordered, added or deleted. Edited lines keep their slot."""
+    mapping: dict[int, int] = {}  # new index -> old index
+    used: set[int] = set()
+    for j, t in enumerate(new):
+        i = next((i for i, o in enumerate(old) if o == t and i not in used), None)
+        if i is not None:
+            mapping[j] = i
+            used.add(i)
+    for j in range(min(len(new), len(old))):
+        if j not in mapping and j not in used:
+            mapping[j] = j
+            used.add(j)
+    if all(j == i for j, i in mapping.items()) and len(new) >= len(old):
+        return
+    udir = job.dir / "narration" / "user"
+    stash = udir / "_stash"
+    stash.mkdir(parents=True, exist_ok=True)
+    for i in range(len(old)):
+        f = udir / f"line-{i}.wav"
+        if f.exists():
+            f.rename(stash / f.name)
+    for j, i in mapping.items():
+        f = stash / f"line-{i}.wav"
+        if f.exists():
+            f.rename(udir / f"line-{j}.wav")
+    shutil.rmtree(stash, ignore_errors=True)
+
+    def clips(s):
+        s["narration"]["clips"] = {str(j): s["narration"]["clips"][str(i)] for j, i in mapping.items() if str(i) in s["narration"]["clips"]}
+    job.update(clips)
+
+
+def archive_storyboard(job: Job) -> None:
+    """Keep the current script as a version before it is replaced."""
+    import time
+
+    sb = job.storyboard()
+    if not sb:
+        return
+    d = job.dir / "storyboards"
+    d.mkdir(exist_ok=True)
+    (d / f"sb-{int(time.time())}.json").write_text(json.dumps(sb, indent=2))
+
+
+def storyboard_versions(job: Job) -> list[dict]:
+    out = []
+    for f in sorted((job.dir / "storyboards").glob("sb-*.json"), reverse=True):
+        try:
+            sb = json.loads(f.read_text())
+        except ValueError:
+            continue
+        out.append({"id": f.stem, "created": int(f.stem[3:]), "title": sb.get("title", ""), "lines": len(sb.get("lines", [])),
+                    "preview": sb["lines"][0]["text"][:90] if sb.get("lines") else ""})
+    return out
+
+
+def restore_storyboard(job: Job, version_id: str) -> None:
+    f = job.dir / "storyboards" / f"{version_id}.json"
+    if not f.exists() or not version_id.startswith("sb-"):
+        raise ValueError("No such script version")
+    data = json.loads(f.read_text())
+    archive_storyboard(job)
+    saved, problems = save_storyboard(job, data)
+    if problems:
+        raise ValueError("That version no longer validates: " + "; ".join(problems[:2]))
