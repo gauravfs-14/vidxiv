@@ -2,7 +2,7 @@ import { h, icon, replace, debounce, fmtDuration } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
 import { progressBar, LogFeed, field, toast, errorMessage, emptyState } from "../ui.js";
-import { recordClip } from "../recorder.js";
+import { openStudio } from "../studio.js";
 
 export function createNarration({ store, sec }) {
   const cfg = { engine: "auto", voice: "af_heart", speed: 0.95 };
@@ -113,11 +113,19 @@ export function createNarration({ store, sec }) {
   const errBox = h("div.notice.error", { role: "alert", hidden: true });
   const takeInput = h("input", { type: "file", accept: "audio/*,video/webm,.m4a,.mp3,.wav,.webm", hidden: true, "aria-label": "Choose one full recording", onchange: () => { if (takeInput.files[0]) sendTake(takeInput.files[0]); takeInput.value = ""; } });
   const takeBtn = h("button.btn", { type: "button", onclick: () => takeInput.click() }, icon("upload-simple", 15), "Upload full recording");
-  const takeRec = h("button.btn", { type: "button", onclick: async () => {
+  const hasMine = (i) => { const c = store.job?.narration.clips?.[i]; return !!(c && (c.source === "user" || c.userUrl)); };
+  function studio(mode, start = 0) {
     const sb = store.job?.storyboard;
-    const f = await recordClip({ title: "Record the full narration", text: sb?.lines.map((l) => l.text).join("\n\n") });
-    if (f) sendTake(f);
-  } }, icon("microphone", 15), "Record full take");
+    if (!sb?.lines.length) return;
+    return openStudio({
+      lines: sb.lines.map((l) => l.text), start, mode, has: hasMine,
+      saveLine: async (i, f) => { store.apply(await api.uploadLine(store.id, i, f)); store.bump(); },
+      saveTake: async (f, marks) => { store.apply(await api.uploadTake(store.id, f, "split", marks)); store.bump(); },
+    });
+  }
+  const firstOpen = () => { const n = store.job?.storyboard?.lines.length || 0; for (let i = 0; i < n; i++) if (!hasMine(i)) return i; return 0; };
+  const takeRec = h("button.btn", { type: "button", onclick: () => studio("all") }, icon("microphone", 15), "Record all at once");
+  const lineRec = h("button.btn", { type: "button", onclick: () => studio("lines", firstOpen()) }, icon("microphone", 15), "Record line by line");
 
   async function call(fn, okMsg) {
     try {
@@ -157,9 +165,7 @@ export function createNarration({ store, sec }) {
     r.source = h("span.source");
     r.acts = [
       h("button.btn.small.ghost", { type: "button", onclick: async () => {
-        const sb = store.job.storyboard;
-        const f = await recordClip({ title: `Record line ${i + 1}`, text: sb.lines[i].text });
-        if (f) lineUpload(i, f);
+        studio("lines", i);
       } }, icon("microphone", 14), "Record"),
       h("button.btn.small.ghost", { type: "button", onclick: () => { fileTarget = i; fileIn.click(); } }, icon("upload-simple", 14), "Upload"),
     ];
@@ -204,7 +210,7 @@ export function createNarration({ store, sec }) {
     h("div.nar-takes",
       h("h3.sub-title", "Record the whole script"),
       h("p.hint", "Read the lines in order. vidxiv matches the take to the script and cuts it into lines. Lines it cannot find keep the synthetic voice."),
-      h("div.take-actions", takeRec, takeBtn, takeInput)));
+      h("div.take-actions", lineRec, takeRec, takeBtn, takeInput)));
 
   function update(job) {
     const st = job.stages.narration;
@@ -234,7 +240,7 @@ export function createNarration({ store, sec }) {
 
     const noLines = !lines.length;
     genBtn.disabled = running || noLines;
-    takeBtn.disabled = takeRec.disabled = running || noLines;
+    takeBtn.disabled = takeRec.disabled = lineRec.disabled = running || noLines;
     tally.textContent = noLines ? "" : stale ? `${ready} of ${lines.length} ready, ${stale} stale` : `${ready} of ${lines.length} ready`;
     progress.hidden = !running;
     bar.set(st.progress, "Generating narration");

@@ -68,10 +68,11 @@ export const api = {
     return request("POST", `${j(id)}/narration/line/${i}`, { form: f });
   },
   deleteLine: (id, i) => request("DELETE", `${j(id)}/narration/line/${i}`),
-  uploadTake: (id, file, mode) => {
+  uploadTake: (id, file, mode, marks) => {
     const f = new FormData();
     f.append("file", file, file.name || "take.webm");
     f.append("mode", mode);
+    if (marks?.length) f.append("marks", JSON.stringify(marks));
     return request("POST", `${j(id)}/narration/take`, { form: f });
   },
   preview: (id) => request("POST", `${j(id)}/preview`),

@@ -73,14 +73,18 @@ def start_narration(job: Job, only: list[int] | None = None) -> None:
     jobs.background(job, "narration", lambda: voice.run_narration(job, only))
 
 
-def start_split(job: Job, audio: Path) -> None:
+def start_split(job: Job, audio: Path, marks: list[dict] | None = None) -> None:
     """Cut one uploaded or recorded take into line clips using the current script, then align every line."""
     def work():
         sb = job.storyboard()
         if not sb:
             raise RuntimeError("Write the script first, then upload the recording")
         job.progress("narration", 0.1, "Transcribing and matching your take to the script")
-        res = voice.split_take(job, audio, [ln["text"] for ln in sb["lines"]])
+        if marks:
+            job.log("narration", "Cutting your take at the moments you pressed next line")
+            res = voice.split_by_marks(job, audio, marks, len(sb["lines"]))
+        else:
+            res = voice.split_take(job, audio, [ln["text"] for ln in sb["lines"]])
         job.log("narration", f"Matched {len(res['matched'])} lines" + (f", missing: {[m + 1 for m in res['missing']]}" if res["missing"] else ""))
         voice.run_narration(job)
         if res["missing"]:

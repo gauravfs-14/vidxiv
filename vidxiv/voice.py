@@ -407,6 +407,34 @@ def split_take(job: Job, audio: Path, lines: list[str]) -> dict:
     return {"matched": matched, "missing": missing}
 
 
+def split_by_marks(job: Job, audio: Path, marks: list[dict], n_lines: int) -> dict:
+    """Cut one take using the moments the speaker pressed 'next line'. marks: [{line, t}] in seconds, in time order.
+    A line that was redone has several marks. The last one counts. A line runs until the next mark of any line."""
+    wav = job.dir / "narration" / "take.wav"
+    wav.parent.mkdir(parents=True, exist_ok=True)
+    ffmpeg("-i", str(audio), "-ac", "1", "-ar", str(SR), str(wav))
+    data, sr = sf.read(wav, dtype="float32")
+    total = len(data) / sr
+    events = sorted((float(m["t"]), int(m["line"])) for m in marks if isinstance(m, dict) and 0 <= int(m.get("line", -1)) < n_lines)
+    matched, missing = [], []
+    for i in range(n_lines):
+        idx = [k for k, (_, ln) in enumerate(events) if ln == i]
+        if not idx:
+            missing.append(i)
+            continue
+        k = idx[-1]
+        a = max(0.0, events[k][0] - 0.1)
+        b = min(total, (events[k + 1][0] if k + 1 < len(events) else total) + 0.15)
+        if b - a < 0.4:
+            missing.append(i)
+            continue
+        dst = job.dir / "narration" / "user" / f"line-{i}.wav"
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        sf.write(dst, data[int(a * sr):int(b * sr)], sr)
+        matched.append(i)
+    return {"matched": matched, "missing": missing}
+
+
 def transcript_lines(job: Job, audio: Path, max_words: int = 34) -> list[str]:
     """Narration lines from a recording with no script. Cuts the clips too (line-N.wav in narration/user)."""
     wav = job.dir / "narration" / "take.wav"

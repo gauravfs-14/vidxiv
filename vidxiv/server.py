@@ -1,6 +1,7 @@
 """Local web API and static UI. Binds to localhost only."""
 from __future__ import annotations
 
+import json
 import shutil
 import threading
 from contextlib import asynccontextmanager
@@ -285,7 +286,7 @@ def delete_line(job_id: str, index: int):
 
 
 @app.post("/api/jobs/{job_id}/narration/take")
-async def upload_take(job_id: str, file: UploadFile = File(...), mode: str = Form("split")):
+async def upload_take(job_id: str, file: UploadFile = File(...), mode: str = Form("split"), marks: str = Form("")):
     """One long recording. split: cut it into lines using the current script. transcribe: use it to create the script."""
     job = get_job(job_id)
     ext = Path(file.filename or "take.webm").suffix or ".webm"
@@ -294,7 +295,11 @@ async def upload_take(job_id: str, file: UploadFile = File(...), mode: str = For
         old.unlink()
     dest = await _save_upload(file, ndir / f"take-upload{ext}")
     if mode == "split":
-        pipeline.start_split(job, dest)
+        try:
+            parsed = json.loads(marks) if marks else None
+        except ValueError as e:
+            raise ValueError("marks must be JSON") from e
+        pipeline.start_split(job, dest, parsed)
     elif mode != "transcribe":
         raise ValueError("mode must be split or transcribe")
     return view(job)

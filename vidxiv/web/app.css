@@ -715,3 +715,29 @@ dialog.recorder { width: min(620px, calc(100vw - 32px)); }
   .app.pdf-open { grid-template-columns: minmax(0, 1fr); }
 }
 .fig-page { font-size: 12px; margin-top: 4px; }
+
+/* recording studio */
+dialog.modal.studio { width: min(900px, calc(100vw - 32px)); }
+.studio-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.studio-head .modal-title { margin: 0; flex: 1; }
+.studio-chips { list-style: none; margin: 8px 0 12px; padding: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.studio-chips .chip { min-width: 30px; height: 28px; padding: 0 8px; display: inline-grid; place-items: center; font: 12px var(--mono); color: var(--text-2); background: var(--hover); border: 1px solid transparent; border-radius: var(--r); cursor: pointer; }
+.studio-chips .chip:hover { background: var(--press); }
+.studio-chips .chip.saved { color: var(--ok); background: var(--ok-soft); }
+.studio-chips .chip.error { color: var(--err); background: var(--err-soft); }
+.studio-chips .chip.current { border-color: var(--accent); color: var(--accent-text); }
+.studio-chips .chip svg { animation: none; }
+.studio-chips .chip.saving svg { animation: spin 1s linear infinite; }
+.studio-stage { max-height: 44vh; min-height: 150px; overflow: auto; padding: 20px 22px; background: var(--field); border: 1px solid var(--line-2); border-radius: var(--r); display: grid; align-content: start; gap: 12px; }
+.studio-stage:focus-visible { outline: 2px solid var(--focus); }
+.studio-count { margin: 0; font-size: 12.5px; color: var(--text-3); }
+.studio-line { margin: 0; font-size: 26px; line-height: 1.4; letter-spacing: -.015em; }
+.studio-next { margin: 8px 0 0; padding-top: 12px; border-top: 1px solid var(--line); font-size: 15px; color: var(--text-3); display: grid; gap: 2px; }
+.studio-next span { font-size: 12px; }
+.studio-all { margin: 0; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; font-size: 19px; line-height: 1.45; color: var(--text-3); padding: 6px 8px; border-radius: var(--r); transition: color .15s, background-color .15s; }
+.studio-all .n { font: 12px/28px var(--mono); }
+.studio-all.cur { color: var(--text); background: var(--accent-soft); }
+.studio-all.done { color: var(--text-2); }
+.studio-auto { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13.5px; color: var(--text-2); cursor: pointer; }
+.studio-keys { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
+.studio-actions { margin-top: 14px; min-height: 40px; }

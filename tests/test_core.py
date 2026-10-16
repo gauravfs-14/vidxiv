@@ -94,3 +94,19 @@ def test_add_regions_crops_and_reports_bad_boxes(tmp_path):
     assert (tmp_path / "paper" / "figures" / "x-01.png").exists()
     assert len(problems) == 3
     assert json.loads((tmp_path / "paper" / "figures.json").read_text())[0]["kind"] == "table"
+
+
+def test_split_by_marks_uses_last_attempt_and_reports_missing(tmp_path):
+    import types
+
+    import numpy as np
+    import soundfile as sf
+
+    sr = 48000
+    sf.write(tmp_path / "take.wav", np.zeros(sr * 10, dtype="float32"), sr)
+    job = types.SimpleNamespace(dir=tmp_path)
+    marks = [{"line": 0, "t": 0.0}, {"line": 1, "t": 3.0}, {"line": 1, "t": 5.0}, {"line": 2, "t": 8.0}]
+    res = voice.split_by_marks(job, tmp_path / "take.wav", marks, 4)
+    assert res["matched"] == [0, 1, 2] and res["missing"] == [3]
+    d1 = sf.info(tmp_path / "narration" / "user" / "line-1.wav").duration
+    assert 3.0 < d1 < 3.4  # the redo (5s to 8s), not the first attempt (3s to 5s)

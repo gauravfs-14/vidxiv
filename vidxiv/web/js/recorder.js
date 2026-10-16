@@ -4,8 +4,8 @@ import { modal } from "./ui.js";
 export const recorderSupported = () =>
   !!(navigator.mediaDevices?.getUserMedia && window.MediaRecorder && window.isSecureContext);
 
-const pickMime = () => ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported?.(t)) || "";
-const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+export const pickMime = () => ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"].find((t) => MediaRecorder.isTypeSupported?.(t)) || "";
+export const clock = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /**
  * Record one audio take in a dialog. Resolves with a File, or null when cancelled.
