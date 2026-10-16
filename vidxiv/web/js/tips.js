@@ -32,6 +32,7 @@ const TIPS = {
   "keep and next line": "Save this take for the line and move to the next one",
   "keep and finish": "Save this take for the last line",
   "record again": "Throw this take away and record the line again",
+  "previous line": "Go back a line to read it again. While recording line by line, the current take is discarded. In an all at once take, the line is marked again and only its last attempt is kept",
   "skip line": "Leave this line as it is and go to the next one",
   "next line": "Mark that you moved on to the next line",
   "restart line": "Start this line again. Only the last attempt is kept",

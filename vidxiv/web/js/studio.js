@@ -155,6 +155,18 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
       if (st.auto) startLine();
     }
 
+    function backWhileRecording() {
+      if (st.phase !== "rec" || st.idx <= 0) return;
+      clearInterval(timer);
+      st.rec.onstop = null;
+      try { st.rec.stop(); } catch { /* already stopped */ }
+      st.blob = null;
+      st.idx -= 1;
+      st.phase = "idle";
+      paint();
+      startLine();
+    }
+
     function goTo(i) {
       if (st.phase === "rec" || st.phase === "count") return;
       st.idx = Math.max(0, Math.min(N - 1, i));
@@ -179,6 +191,13 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
       st.cur += 1;
       st.marks.push({ line: st.cur, t: elapsed() });
       paint();
+    }
+    function prevLine() {
+      if (st.phase !== "rec" || st.cur <= 0) return;
+      st.cur -= 1;
+      st.marks.push({ line: st.cur, t: elapsed() });
+      paint();
+      msg.textContent = `Back to line ${st.cur + 1}. Read it again, then press Next line. Only the last attempt of a line is kept.`;
     }
     function redoLine() {
       if (st.phase !== "rec") return;
@@ -240,8 +259,8 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
       player.hidden = st.phase !== "review";
       if (st.phase === "review" && st.blob) player.src = URL.createObjectURL(st.blob);
       keys.textContent = full
-        ? "While recording: Space or the right arrow moves to the next line, R restarts the current line."
-        : "Space starts and stops. Enter keeps the take and moves on. R records the line again. Arrow keys move between lines.";
+        ? "While recording: Space or the right arrow moves to the next line, the left arrow goes back a line, R restarts the current line."
+        : "Space starts and stops. Enter keeps the take and moves on. R records the line again. The left arrow goes back a line, even while recording.";
 
       if (micError) {
         msg.className = "rec-msg warn";
@@ -260,15 +279,15 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
       if (!full) {
         if (st.phase === "idle") {
           msg.textContent = st.status[st.idx] === "saved" ? "This line already has a recording. Recording again replaces it." : "Read the line above in your normal voice.";
-          setControls(btn("", "Upload file", "upload-simple", () => fileInput.click()), btn("ghost", "Skip line", "caret-right", () => goTo(st.idx + 1), { disabled: st.idx >= N - 1 }), btn("primary", "Record", "microphone", startLine));
+          setControls(btn("", "Upload file", "upload-simple", () => fileInput.click()), btn("ghost", "Previous line", "arrow-left", () => goTo(st.idx - 1), { disabled: st.idx <= 0 }), btn("ghost", "Skip line", "caret-right", () => goTo(st.idx + 1), { disabled: st.idx >= N - 1 }), btn("primary", "Record", "microphone", startLine));
           controls.querySelector(".primary")?.focus();
         } else if (st.phase === "rec") {
           msg.textContent = "Recording.";
-          setControls(btn("danger", "Stop", "stop", stopRecording));
+          setControls(btn("ghost", "Previous line", "arrow-left", backWhileRecording, { disabled: st.idx <= 0 }), btn("danger", "Stop", "stop", stopRecording));
           controls.querySelector("button")?.focus();
         } else if (st.phase === "review") {
           msg.textContent = st.short ? "That take is very short. Record it again." : "Listen, then keep it and move on, or record the line again.";
-          setControls(btn("ghost", "Record again", "arrow-clockwise", () => { st.phase = "idle"; paint(); }),
+          setControls(btn("ghost", "Previous line", "arrow-left", () => goTo(st.idx - 1), { disabled: st.idx <= 0 }), btn("ghost", "Record again", "arrow-clockwise", () => { st.phase = "idle"; paint(); }),
             btn("primary", st.idx >= N - 1 ? "Keep and finish" : "Keep and next line", "check", keepLine, { disabled: !!st.short }));
           controls.querySelector(".primary")?.focus();
         } else if (st.phase === "done") {
@@ -284,7 +303,7 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
           controls.querySelector(".primary")?.focus();
         } else if (st.phase === "rec") {
           msg.textContent = `Line ${st.cur + 1} of ${N}.`;
-          setControls(btn("ghost", "Restart line", "arrow-clockwise", redoLine), btn("danger", "Finish", "stop", stopRecording),
+          setControls(btn("ghost", "Previous line", "arrow-left", prevLine, { disabled: st.cur <= 0 }), btn("ghost", "Restart line", "arrow-clockwise", redoLine), btn("danger", "Finish", "stop", stopRecording),
             btn("primary", st.cur >= N - 1 ? "Last line done" : "Next line", st.cur >= N - 1 ? "check" : "caret-right", nextLine));
           controls.querySelector(".primary")?.focus();
         } else if (st.phase === "review") {
@@ -304,10 +323,12 @@ export function openStudio({ lines, start = 0, mode = "lines", has = () => false
         if (k === " ") { grab(); if (st.phase === "idle") startLine(); else if (st.phase === "rec") stopRecording(); else if (st.phase === "review" && !st.short) keepLine(); }
         else if (k === "Enter" && st.phase === "review" && !st.short) { grab(); keepLine(); }
         else if ((k === "r" || k === "R") && st.phase === "review") { grab(); st.phase = "idle"; paint(); }
+        else if (k === "ArrowLeft" && st.phase === "rec") { grab(); backWhileRecording(); }
         else if (k === "ArrowRight" && (st.phase === "idle" || st.phase === "review")) { grab(); goTo(st.idx + 1); }
         else if (k === "ArrowLeft" && (st.phase === "idle" || st.phase === "review")) { grab(); goTo(st.idx - 1); }
       } else if (st.phase === "rec") {
         if (k === " " || k === "ArrowRight") { grab(); nextLine(); }
+        else if (k === "ArrowLeft") { grab(); prevLine(); }
         else if (k === "r" || k === "R") { grab(); redoLine(); }
       } else if (st.phase === "idle" && k === " ") { grab(); startTake(); }
     }
