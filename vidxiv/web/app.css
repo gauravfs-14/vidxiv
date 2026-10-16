@@ -404,7 +404,7 @@ output { font-variant-numeric: tabular-nums; }
 .shot-label { display: flex; gap: 6px; font-size: 12px; color: var(--text-2); }
 .shot-label .mono { color: var(--text-3); }
 
-.lines-head, .line { display: grid; grid-template-columns: 28px 108px minmax(0, 1fr); column-gap: 12px; }
+.lines-head, .line { display: grid; grid-template-columns: 28px 108px minmax(0, 1fr) 164px; column-gap: 12px; }
 .lines-head { padding: 10px 0 6px; font-size: 12px; color: var(--text-3); }
 .line { align-items: start; padding: 9px 0; border-bottom: 1px solid var(--line); position: relative; }
 .line:hover, .line:focus-within { background: linear-gradient(90deg, transparent, var(--hover) 12px, var(--hover) calc(100% - 12px), transparent); }
@@ -435,7 +435,7 @@ output { font-variant-numeric: tabular-nums; }
 .note svg { margin-top: 3px; }
 .note.warn { color: var(--warn); }
 .note.err { color: var(--err); }
-.line-actions { position: absolute; right: 0; top: 7px; display: flex; align-items: center; padding-left: 6px; border-radius: var(--r); background: color-mix(in srgb, var(--bg) 94%, transparent); opacity: 0; transition: opacity .12s; }
+.line-actions { grid-column: 4; grid-row: 1; display: flex; align-items: center; justify-content: flex-end; opacity: 0; transition: opacity .12s; }
 .line:hover .line-actions, .line:focus-within .line-actions, .line.open .line-actions { opacity: 1; }
 @media (hover: none) { .line-actions { opacity: 1; } }
 .more svg { transition: transform .15s; }
@@ -630,8 +630,7 @@ dialog.recorder { width: min(620px, calc(100vw - 32px)); }
   .workspace { padding: 12px 4px 0; }
   .pane-head { flex-direction: column; align-items: flex-start; gap: 12px; }
   .lines-head, .line { grid-template-columns: 24px 96px minmax(0, 1fr); }
-  .line-actions { top: 2px; }
-  .line-actions { opacity: 1; }
+  .line-actions { grid-column: 3; grid-row: 2; justify-content: flex-start; opacity: 1; margin-top: 4px; }
   .recent-row { grid-template-columns: minmax(0, 1fr) 28px; }
   .recent-state { grid-column: 1; grid-row: 2; }
   .row-del { opacity: 1; grid-row: 1; grid-column: 2; }
