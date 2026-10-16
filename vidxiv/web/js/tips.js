@@ -74,6 +74,8 @@ const TIPS = {
   "close": "Close",
 };
 const PREFIX = [
+  [/^back to /, "Go back to the previous step. Nothing is lost"],
+  [/^next: /, "Go to the next step"],
   [/^move line \d+ up/, "Move this line up"],
   [/^move line \d+ down/, "Move this line down"],
   [/^add a line below/, "Add a new line after this one"],

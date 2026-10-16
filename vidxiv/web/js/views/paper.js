@@ -49,8 +49,7 @@ export function createPaper({ store, sec }) {
             figs.map((f, i) => h("li", h("button.fig", { type: "button", onclick: () => lightbox(items, i), "aria-label": `Open ${f.label}: ${f.caption}` },
               h("span.fig-img", h("img", { src: f.url, alt: "", loading: "lazy" })),
               h("span.fig-label", f.label)))))
-          : h("p.muted", "No figures were extracted. Scenes will use text only.")),
-      h("div.paper-next", h("a.btn.primary", { href: jobHref(store.id, "script"), onclick: (e) => { e.preventDefault(); sec.go("script"); } }, "Continue to script", icon("arrow-right", 14))));
+          : h("p.muted", "No figures were extracted. Scenes will use text only.")));
     fit = () => {
       if (!abstract.offsetParent) return; // hidden pane: measure when it is shown
       if (abstract.classList.contains("clamped") && abstract.scrollHeight <= abstract.clientHeight + 2) { abstract.classList.remove("clamped"); more.remove(); }

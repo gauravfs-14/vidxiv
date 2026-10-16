@@ -355,4 +355,13 @@ def files(job_id: str, path: str, download: bool = False):
     return FileResponse(target, headers={"Cache-Control": "no-cache"}, filename=target.name if download else None)
 
 
-app.mount("/", StaticFiles(directory=config.WEB, html=True), name="web")
+class FreshFiles(StaticFiles):
+    """The UI is plain files that change between versions, so always revalidate instead of trusting a cached copy."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+app.mount("/", FreshFiles(directory=config.WEB, html=True), name="web")

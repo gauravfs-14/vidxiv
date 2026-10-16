@@ -16,7 +16,7 @@ const STAGES = [
   { key: "video", name: "Video", sub: "Pick formats and a look, then render.", make: createVideo },
 ];
 
-/** Project workspace: a stage rail on the left and one stage at a time on the right. */
+/** Project workspace: a raised stage card beside the content, centered with it, and one stage at a time. */
 export function mountJob(root, id, initialStage) {
   const store = new JobStore(id);
   let stage = initialStage;
@@ -65,6 +65,29 @@ export function mountJob(root, id, initialStage) {
   });
   const part = hosts.map((host, i) => ({ host, ...STAGES[i].make({ store, sec: host }) }));
 
+  // Previous and next at the bottom of every stage, so the way forward does not depend on spotting the sidebar.
+  const READY = [
+    (j) => j.stages.ingest.state === "done" || "Wait for the paper to finish loading.",
+    (j) => !!j.storyboard || "Write the script to continue.",
+    () => true,
+    () => true,
+  ];
+  const navs = hosts.map((host, i) => {
+    const prev = i > 0 && h("button.btn", { type: "button", onclick: () => host.go(STAGES[i - 1].key) }, icon("arrow-left", 15), `Back to ${STAGES[i - 1].name.toLowerCase()}`);
+    const next = i < STAGES.length - 1 && h("button.btn.primary", { type: "button", onclick: () => host.go(STAGES[i + 1].key) }, `Next: ${STAGES[i + 1].name.toLowerCase()}`, icon("arrow-right", 15));
+    const hint = h("p.nav-hint", { "aria-live": "polite" });
+    host.el.append(h("footer.pane-nav", h("div.nav-prev", prev), hint, h("div.nav-next", next)));
+    return { prev, next, hint };
+  });
+  function paintNav(job) {
+    navs.forEach((n, i) => {
+      if (!n.next) return;
+      const r = READY[i](job);
+      n.next.disabled = r !== true;
+      n.hint.textContent = r === true ? "" : r;
+    });
+  }
+
   const rail = h("aside.rail", { "aria-label": "Project" },
     h("a.brand", { href: "#/", "aria-label": "vidxiv, all projects" }, h("span.brand-mark", { "aria-hidden": "true" }), "vidxiv"),
     h("a.back", { href: "#/" }, icon("arrow-left", 14), "All projects"),
@@ -109,6 +132,7 @@ export function mountJob(root, id, initialStage) {
     replace(title, job.title || "Untitled");
     replace(meta, job.source.type === "arxiv" ? `arXiv:${job.source.id}` : job.source.filename || "PDF upload");
     part.forEach((p) => p.update(job, prev));
+    paintNav(job);
 
     if (first) {
       first = false;
