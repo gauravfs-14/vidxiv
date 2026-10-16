@@ -3,7 +3,9 @@
 Turn an arXiv paper or a PDF into a narrated explainer video. Runs on your machine. The script is written by the
 Claude Code or Codex CLI you already have installed, the voice is a local model, and the video is rendered with Remotion.
 
-![vidxiv project page](docs/screenshots/script.png)
+![Script editor with the paper PDF beside it](docs/screenshots/pdf.png)
+
+![Recording studio](docs/screenshots/studio.png)
 
 ![The four looks](docs/screenshots/looks.png)
 
@@ -12,8 +14,10 @@ Claude Code or Codex CLI you already have installed, the voice is a local model,
 1. **Reads the paper.** Give it an arXiv id, an arXiv link, or a PDF. It extracts the text and cuts the figures out of the PDF locally, which costs no tokens. A built-in PDF viewer opens beside your work so you can check the script against the paper.
 2. **Writes the script.** An agent (Claude Code or Codex) reads the paper and writes narration plus a scene for every line,
    using the `paper-video` and `unslop` skills in this repo. Or you paste your own narration, or upload a recording and use its transcript.
-3. **Narrates it.** A local neural voice (Kokoro), macOS system voices, a recording you make in the browser line by line,
+3. **Narrates it.** A local neural voice (Kokoro), macOS system voices, a recording you make in the browser,
    or one long audio file that gets cut into lines by matching it against the script. Mix them per line.
+   The recording studio has two modes: line by line (Space starts and stops, Enter keeps the take, R records again, the left arrow goes back a line, even while recording)
+   and all at once (read the whole script in one take, vidxiv cuts it into lines).
 4. **Renders it.** Vertical (Shorts, Reels, TikTok), landscape (YouTube) or square, with word-synced captions, music and quiet sound effects,
    mastered to about -14 LUFS.
 
@@ -51,7 +55,7 @@ Open http://127.0.0.1:8420. The first render installs the video engine, which ta
 
 1. Enter an arXiv id (for example `1706.03762`) or drop a PDF.
 2. Choose how the script is written, a length, a level of detail and an agent, then select **Write script**. Edit any line, scene or figure. Use **Preview scenes** to see stills.
-3. Pick a voice, or record or upload your own per line. Select **Generate narration**. Rendering narrates anything still missing.
+3. Pick a voice, or record (line by line or all at once) or upload your own. Open **View PDF** at any time to check the script against the paper. Select **Generate narration**. Rendering narrates anything still missing.
 4. Choose formats, look, captions and music, then select **Render video**.
 
 Everything for a project is in `workspace/jobs/<id>/`: the paper, figures, `storyboard.json`, narration clips and the finished MP4 files.
