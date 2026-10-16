@@ -114,7 +114,7 @@ def view(job: Job) -> dict:
     s["figures"] = [{**f, "url": f"/files/{job.id}/paper/figures/{f['file']}"} for f in job.figures()]
     for o in s.get("outputs", []):  # renders made before versions existed
         o.setdefault("id", o["file"])
-        o.setdefault("run", 1)
+        o.setdefault("run", 0)
         o.setdefault("look", "studio")
     s["outputs"] = [{**o, "url": f"/files/{job.id}/{o['file']}", "posterUrl": f"/files/{job.id}/{o['poster']}" if o.get("poster") else None} for o in s.get("outputs", [])]
     s["previews"] = [f"/files/{job.id}/{p}" for p in s.get("previews", [])]

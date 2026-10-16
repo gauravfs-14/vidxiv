@@ -21,7 +21,8 @@ You choose the length (short 45 s, medium 90 s, long 3 min, or any custom value 
 (overview, balanced, in depth). Very long videos use a lot of agent tokens, and the app warns you above 5 minutes.
 
 Four looks are built in: `studio` (cool light, blue), `night` (graphite, emerald), `swiss` (white grid, signal red) and `cobalt` (saturated blue, yellow).
-Choose one, or leave it on Auto and the agent picks the one that suits the paper. The design rules live in `skills/video-taste/`.
+Choose one or several (you get one video per look from the same narration), or leave it on Auto and the agent picks the one that suits the paper.
+Rendering again never deletes earlier renders, and replaced scripts are kept under Earlier scripts so you can restore them. The design rules live in `skills/video-taste/`.
 
 Scenes are drawn from a fixed set: hook, title, concept, steps, figure (with zoom and callouts), stat, bars, compare, equation, quote, outro.
 The agent only fills in content, so a bad answer fails validation instead of breaking a render.
@@ -58,7 +59,7 @@ Everything for a project is in `workspace/jobs/<id>/`: the paper, figures, `stor
 ### From the command line
 
 ```bash
-uv run vidxiv make 1706.03762 --seconds 90 --detail balanced --look swiss --format Vertical --format Landscape
+uv run vidxiv make 1706.03762 --seconds 90 --detail balanced --look swiss --look night --format Vertical --format Landscape
 uv run vidxiv make paper.pdf --agent codex --script my-narration.txt --audio my-reading.m4a
 ```
 

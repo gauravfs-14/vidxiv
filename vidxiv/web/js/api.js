@@ -75,6 +75,8 @@ export const api = {
     return request("POST", `${j(id)}/narration/take`, { form: f });
   },
   preview: (id) => request("POST", `${j(id)}/preview`),
+  restoreScript: (id, version) => request("POST", `${j(id)}/storyboard/restore/${encodeURIComponent(version)}`),
+  deleteOutput: (id, output) => request("DELETE", `${j(id)}/outputs/${encodeURIComponent(output)}`),
   render: (id, body) => request("POST", `${j(id)}/render`, { json: body }),
   voicePreview: async (body) => {
     const res = await request("POST", "/api/voices/preview", { json: body });

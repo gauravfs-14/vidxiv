@@ -1,4 +1,4 @@
-import { h, icon, replace, autosize, fmtSize } from "../dom.js";
+import { h, icon, replace, autosize, fmtSize, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
 import { progressBar, LogFeed, segmented, field as fieldEl, toast, errorMessage, confirmDialog, lightbox, skel, emptyState } from "../ui.js";
@@ -69,7 +69,8 @@ export function createScript({ store, sec }) {
   const notes = h("textarea", { rows: 2, placeholder: "Focus on the method. Skip the related work.", oninput: () => { state.instructions = notes.value; autosize(notes); } });
   const agentSel = h("select", { onchange: () => { state.agent = agentSel.value; state.armed = false; paintAgent(); paintDuration(); } });
   const agentHint = h("p.hint");
-  const model = h("input", { type: "text", placeholder: "Leave empty for the agent default", autocomplete: "off", spellcheck: false, oninput: () => { state.model = model.value.trim(); } });
+  const model = h("select", { onchange: () => { state.model = model.value; paintModels(); } });
+  const modelHint = h("p.hint");
   const text = h("textarea.script-text", { rows: 8, placeholder: "Paste or type the narration. Blank lines start a new line of narration.", oninput: () => { state.text = text.value; autosize(text); } });
   const file = { name: h("span.file-name"), clear: h("button.link-btn", { type: "button", hidden: true }, "Remove") };
   const audioIn = h("input", { type: "file", accept: "audio/*,video/webm,.m4a,.mp3,.wav,.webm", hidden: true, "aria-label": "Choose a recording", onchange: () => setFile(audioIn.files[0]) });
@@ -97,8 +98,8 @@ export function createScript({ store, sec }) {
         h("button.btn", { type: "button", onclick: () => audioIn.click() }, icon("upload-simple", 15), "Upload audio"),
         file.name, file.clear),
       whisperNote, audioIn));
-  const adv = h("details.disclosure.adv", h("summary", "Advanced"), fieldEl("Model", model, "Passed to the agent as its model name. Optional."));
-  const agentRow = h("div.pane-fields", fieldEl("Scene writer", agentSel, agentHint), adv);
+  const modelField = fieldEl("Model", model, modelHint);
+  const agentRow = h("div.pane-fields", fieldEl("Scene writer", agentSel, agentHint), modelField);
 
   const runBtn = h("button.btn.primary.lg", { type: "button", onclick: () => run() });
   const runHint = h("p.hint");
@@ -173,6 +174,23 @@ export function createScript({ store, sec }) {
       codex: "Reads the paper and writes the script with Codex.",
       none: "Builds scenes from the abstract and figures with fixed rules. Fast, but plainer.",
     }[state.agent];
+    paintModels();
+  }
+
+  // The list comes from the installed CLI, so a model that does not exist cannot be chosen.
+  function paintModels() {
+    const resolved = state.agent === "auto" ? (env.agentFound("claude") ? "claude" : env.agentFound("codex") ? "codex" : null) : state.agent;
+    modelField.hidden = !resolved || resolved === "none";
+    if (modelField.hidden) { state.model = ""; return; }
+    const list = env.agentModels(resolved);
+    replace(model, list.map((m) => h("option", { value: m.id }, m.label)));
+    if (!list.some((m) => m.id === state.model)) state.model = "";
+    model.value = state.model;
+    model.disabled = list.length < 2;
+    const cur = list.find((m) => m.id === state.model);
+    modelHint.textContent = list.length < 2
+      ? "This CLI did not report any other models, so it uses its own default."
+      : [state.agent === "auto" ? `Models from ${resolved === "claude" ? "Claude Code" : "Codex"}. ` : "", cur?.note || ""].join("").trim();
   }
 
   async function run() {
@@ -186,7 +204,7 @@ export function createScript({ store, sec }) {
       return;
     }
     if (job.storyboard) {
-      const ok = await confirmDialog({ title: "Write a new script?", body: "This replaces the current lines and removes any recordings you made for them.", confirm: "Replace script", danger: true });
+      const ok = await confirmDialog({ title: "Write a new script?", body: "The current script is kept as a version you can restore. Recordings you made for its lines are removed.", confirm: "Replace script", danger: true });
       if (!ok) return;
     }
     runBtn.disabled = true;
@@ -238,7 +256,25 @@ export function createScript({ store, sec }) {
   editor.slot.append(preview);
   let stripSig = "";
 
-  sec.body.append(gen, blocked, activity, log, errBox, editor.el);
+  const versionList = h("ul.versions");
+  const versions = h("details.disclosure.versions-box", { hidden: true }, h("summary", "Earlier scripts"),
+    h("p.hint", "Writing a new script keeps the old one here. Restoring swaps it in and keeps the current one."), versionList);
+  let verSig = "";
+  async function restore(v) {
+    if (!(await confirmDialog({ title: "Restore this script?", body: "It becomes the current script. The current one is kept as a version. Recordings for lines that change are removed.", confirm: "Restore script" }))) return;
+    try { store.apply(await api.restoreScript(store.id, v.id)); store.bump(); } catch (e) { toast(errorMessage(e), "error"); }
+  }
+  function paintVersions(list) {
+    const sig = JSON.stringify(list);
+    if (sig === verSig) return;
+    verSig = sig;
+    versions.hidden = !list.length;
+    versions.querySelector("summary").textContent = `Earlier scripts (${list.length})`;
+    replace(versionList, list.map((v) => h("li",
+      h("div.ver-text", h("span.ver-title", `${v.lines} lines, ${timeAgo(v.created)}`), h("span.ver-prev", v.preview)),
+      h("button.btn.small.ghost", { type: "button", onclick: () => restore(v) }, "Restore"))));
+  }
+  sec.body.append(gen, blocked, activity, log, errBox, editor.el, versions);
   paintMode();
   paintAgent();
   setFile(null);
@@ -262,8 +298,7 @@ export function createScript({ store, sec }) {
       state.model = b.model || "";
       agentSel.value = b.agent || "auto";
       state.agent = agentSel.value;
-      notes.value = state.instructions; text.value = state.text; model.value = state.model;
-      if (state.model) adv.open = true;
+      notes.value = state.instructions; text.value = state.text;
       paintAgent(); paintMode();
     }
     const kind = running ? "running" : st.state === "error" ? "error" : has ? "done" : "idle";
@@ -278,7 +313,7 @@ export function createScript({ store, sec }) {
     toggleGen.textContent = genOpen ? "Close" : "Write a new script";
     toggleGen.setAttribute("aria-expanded", String(genOpen));
     genTitle.textContent = has ? "Replace the script" : "Write the script";
-    genSub.textContent = has ? "This replaces the current lines and removes any recordings you made for them." : "Pick how the narration is written. You can edit every line afterwards.";
+    genSub.textContent = has ? "The current script is kept under Earlier scripts." : "Pick how the narration is written. You can edit every line afterwards.";
     runBtn.disabled = !ready || running;
     runHint.textContent = !ready ? "The paper has to finish loading first." : "";
 
@@ -291,6 +326,7 @@ export function createScript({ store, sec }) {
     if (st.state === "error") replace(errBox, h("p", h("strong", "The script was not written. "), st.error || st.message, " Try another agent, or choose simple rules."));
 
     editor.sync(job, { busy: running });
+    paintVersions(job.scriptVersions || []);
 
     // preview
     const pv = job.stages.preview;

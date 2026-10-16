@@ -28,6 +28,7 @@ export const env = {
     return r;
   },
 
+  agentModels(name) { return this.data?.agents?.[name]?.models || []; },
   agentFound(name) { return !!this.data?.agents?.[name]?.found; },
   get engineReady() { return !!this.data?.tools?.engine; },
   get ffmpeg() { return !!this.data?.tools?.ffmpeg; },

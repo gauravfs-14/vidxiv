@@ -1,7 +1,7 @@
-import { h, icon, replace, debounce, fmtDuration, fmtSize } from "../dom.js";
+import { h, icon, replace, debounce, fmtDuration, fmtSize, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { progressBar, LogFeed, field, toast, errorMessage, emptyState } from "../ui.js";
+import { progressBar, LogFeed, field, toast, errorMessage, emptyState, confirmDialog } from "../ui.js";
 import { installEngineHint } from "./script.js";
 
 const FORMATS = [
@@ -25,11 +25,11 @@ function swatch(look) {
 }
 
 export function createVideo({ store, sec }) {
-  const cfg = { formats: ["Vertical"], look: "auto", captions: true, music: "warm" };
+  const cfg = { formats: ["Vertical"], looks: ["auto"], captions: true, music: "warm" };
   let init = false, dirty = false;
 
   const save = debounce(async () => {
-    try { await api.putBrief(store.id, { ...cfg }); dirty = false; } catch (e) { toast(`Settings were not saved. ${errorMessage(e)}`, "error"); }
+    try { await api.putBrief(store.id, { ...cfg, look: cfg.looks[0] || "auto" }); dirty = false; } catch (e) { toast(`Settings were not saved. ${errorMessage(e)}`, "error"); }
   }, 500);
   const changed = () => { dirty = true; save(); paint(); };
 
@@ -50,13 +50,17 @@ export function createVideo({ store, sec }) {
 
   // look
   const lookInputs = LOOKS.map((l) => {
-    const input = h("input", { type: "radio", name: "look", value: l.value, onchange: () => { cfg.look = l.value; changed(); } });
+    const input = h("input", { type: "checkbox", value: l.value, onchange: () => {
+      cfg.looks = lookInputs.filter((i) => i.checked).map((i) => i.value);
+      changed();
+    } });
     input.el = h("label.opt.look", input, swatch(l.value),
       h("span.opt-text", h("span.opt-name", l.name), h("span.opt-sub", l.suits)),
       h("span.opt-check", icon("check", 14)));
     return input;
   });
-  const lookGroup = h("fieldset.group", h("legend", "Look"), h("div.opt-list", lookInputs.map((i) => i.el)));
+  const lookGroup = h("fieldset.group", h("legend", "Looks"), h("p.hint.group-hint", "Pick several to get one video per look from the same narration."), h("div.opt-list", lookInputs.map((i) => i.el)));
+  const lookErr = h("p.field-error", { role: "alert", hidden: true }, "Choose at least one look to render.");
 
   // captions, music
   const captions = h("input", { type: "checkbox", role: "switch", onchange: () => { cfg.captions = captions.checked; changed(); } });
@@ -68,6 +72,7 @@ export function createVideo({ store, sec }) {
   const msg = h("p.progress-msg", { "aria-live": "polite" });
   const btn = h("button.btn.primary.lg", { type: "button", onclick: () => render() }, icon("film-strip", 16), "Render video");
   const why = h("p.hint");
+  const count = h("p.hint.render-count");
   const cancel = h("button.btn.small", { type: "button", onclick: async () => { try { await api.cancel(store.id); store.bump(); } catch (e) { toast(errorMessage(e), "error"); } } }, icon("x", 14), "Cancel");
   const progress = h("div.progress-row", { hidden: true }, bar, cancel);
   const errBox = h("div.notice.error", { role: "alert", hidden: true });
@@ -75,7 +80,7 @@ export function createVideo({ store, sec }) {
   const log = h("details.disclosure", { hidden: true }, h("summary", "Render log"), feed.el);
   const outputs = h("div.outputs");
   const hintSlot = h("div.hint-slot");
-  const empty = h("div", emptyState("No video yet", "Choose formats and a look, then render. Lines without narration are narrated first."));
+  const empty = h("div", emptyState("No video yet", "Choose formats and looks, then render. Lines without narration are narrated first."));
 
   async function render() {
     save.cancel();
@@ -90,9 +95,9 @@ export function createVideo({ store, sec }) {
 
   sec.body.append(h("div.video-grid",
     h("div.video-form",
-      fmtGroup, fmtErr, lookGroup,
+      fmtGroup, fmtErr, lookGroup, lookErr,
       h("div.opt-row", capLabel, field("Music", music)),
-      h("div.render-row", btn, why, hintSlot)),
+      h("div.render-row", btn, count, why, hintSlot)),
     h("div.video-results", progress, msg, errBox, log, empty, outputs)));
 
   let lastJob = null;
@@ -106,7 +111,7 @@ export function createVideo({ store, sec }) {
       Object.assign(cfg, pick(job.brief));
     }
     fmtInputs.forEach((i) => (i.checked = cfg.formats.includes(i.value)));
-    lookInputs.forEach((i) => (i.checked = i.value === cfg.look));
+    lookInputs.forEach((i) => (i.checked = cfg.looks.includes(i.value)));
     captions.checked = cfg.captions;
     if (document.activeElement !== music) music.value = cfg.music;
 
@@ -117,8 +122,12 @@ export function createVideo({ store, sec }) {
     sec.setStatus(running ? "running" : st.state === "error" ? "error" : done ? "done" : "idle",
       running ? "Rendering" : st.state === "error" ? "Failed" : done ? `${job.outputs.length} video${job.outputs.length === 1 ? "" : "s"}` : has ? "Ready" : "Waiting", st.progress);
 
-    const noFormat = cfg.formats.length === 0;
-    fmtErr.hidden = !noFormat;
+    const noFormat = cfg.formats.length === 0 || cfg.looks.length === 0;
+    fmtErr.hidden = cfg.formats.length > 0;
+    lookErr.hidden = cfg.looks.length > 0;
+    const total = cfg.formats.length * cfg.looks.length;
+    btn.lastChild.textContent = job.outputs.length ? "Render again" : "Render video";
+    count.textContent = total ? `${cfg.looks.length} look${cfg.looks.length === 1 ? "" : "s"} x ${cfg.formats.length} format${cfg.formats.length === 1 ? "" : "s"} = ${total} video${total === 1 ? "" : "s"}. ${job.outputs.length ? "Earlier renders are kept." : ""}` : "";
     const reasons = [];
     if (!has) reasons.push("Write the script first.");
     else if (env.data && !env.engineReady) reasons.push("The video engine is not installed.");
@@ -138,20 +147,34 @@ export function createVideo({ store, sec }) {
     const sig = JSON.stringify(job.outputs);
     if (sig !== outSig) {
       outSig = sig;
-      replace(outputs, job.outputs.map((o) => {
-        const fmt = FORMATS.find((f) => f.value === o.format);
-        const video = h("video", { controls: true, preload: "metadata", poster: o.posterUrl ? `${o.posterUrl}?v=${o.created || ""}` : undefined, src: `${o.url}?v=${o.created || ""}`, "aria-label": `${o.format} video`, style: fmt ? `aspect-ratio:${fmt.ratio}` : "" });
-        return h("article.out", { dataset: { fmt: o.format } },
-          h("div.out-media", video),
-          h("div.out-info",
-            h("h3.out-name", o.format),
-            h("p.out-meta", [fmt?.sub, fmtDuration(o.seconds), fmtSize(o.size)].filter(Boolean).join(", ")),
-            h("a.btn.small", { href: `${o.url}?download=1`, download: "" }, icon("download-simple", 14), "Download")));
-      }));
+      const runs = new Map();
+      for (const o of job.outputs) (runs.get(o.run) || runs.set(o.run, []).get(o.run)).push(o);
+      const ordered = [...runs.entries()].sort((x, y) => y[0] - x[0]);
+      replace(outputs, ordered.map(([run, list], idx) => h("section.run",
+        h("header.run-head", h("h3", run === 0 ? "Earlier render" : `Render ${run}`), h("span.run-meta", [timeAgo(Math.max(...list.map((o) => o.created || 0))), `${list.length} video${list.length === 1 ? "" : "s"}`].filter(Boolean).join(", ")), idx === 0 && ordered.length > 1 && h("span.run-tag", "Latest")),
+        h("div.run-grid", list.map(card)))));
     }
   }
 
+  function card(o) {
+    const fmt = FORMATS.find((f) => f.value === o.format);
+    const look = LOOKS.find((l) => l.value === o.look);
+    const v = `?v=${o.created || ""}`;
+    const video = h("video", { controls: true, preload: "metadata", poster: o.posterUrl ? o.posterUrl + v : undefined, src: o.url + v, "aria-label": `${look?.name || o.look} ${o.format} video`, style: fmt ? `aspect-ratio:${fmt.ratio}` : "" });
+    return h("article.out", { dataset: { fmt: o.format } },
+      h("div.out-media", video),
+      h("div.out-info",
+        h("h4.out-name", `${look?.name || o.look}, ${o.format}`),
+        h("p.out-meta", [fmtDuration(o.seconds), fmtSize(o.size)].filter(Boolean).join(", ")),
+        h("div.out-actions",
+          h("a.btn.small", { href: `${o.url}?download=1`, download: "" }, icon("download-simple", 14), "Download"),
+          h("button.btn.small.ghost", { type: "button", "aria-label": "Delete video", onclick: async () => {
+            if (!(await confirmDialog({ title: "Delete this video?", body: "The file is removed from this project. Other renders are not affected.", confirm: "Delete video", danger: true }))) return;
+            try { store.apply(await api.deleteOutput(store.id, o.id)); } catch (e) { toast(errorMessage(e), "error"); }
+          } }, icon("trash", 14)))));
+  }
+
   const unsubEnv = env.subscribe(() => paint());
-  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], look: LOOKS.some((l) => l.value === b.look) ? b.look : "auto", captions: b.captions !== false, music: b.music || "warm" });
+  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], looks: (b.looks && b.looks.length ? b.looks : [b.look || "auto"]).filter((x) => LOOKS.some((l) => l.value === x)), captions: b.captions !== false, music: b.music || "warm" });
   return { update, destroy() { feed.destroy(); save.cancel(); unsubEnv(); } };
 }

@@ -2,10 +2,12 @@ import { $ } from "./dom.js";
 import { onConnection } from "./api.js";
 import { startRouter } from "./router.js";
 import { initTheme } from "./theme.js";
+import { initTips } from "./tips.js";
 import { mountHome } from "./views/home.js";
 import { mountJob } from "./views/job.js";
 
 initTheme();
+initTips();
 
 const view = $("#view");
 const banner = $("#offline");

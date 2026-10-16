@@ -204,7 +204,7 @@ export class StoryboardEditor {
     refs.idx = h("span.line-idx");
     refs.type = h("select.type-select", { onchange: () => this.changeType(r, refs.type.value) },
       SCENE_TYPES.map((t) => h("option", { value: t, disabled: t === "figure" && !this.figures.length, title: t === "figure" && !this.figures.length ? "This paper has no extracted figures" : undefined }, SCENES[t].label)));
-    const act = (name, ic, fn) => (refs[name] = h("button.icon-btn", { type: "button", onclick: fn }, icon(ic, 15)));
+    const act = (name, ic, fn, label) => (refs[name] = h("button.icon-btn", { type: "button", "aria-label": label, onclick: fn }, icon(ic, 15)));
     refs.text = h("textarea.narration", { rows: 1, maxLength: 420, spellcheck: true, value: r.line.text, oninput: () => {
       r.line.text = refs.text.value;
       autosize(refs.text);
@@ -230,10 +230,10 @@ export class StoryboardEditor {
       h("span.type-wrap", { dataset: { tint: SCENES[r.line.scene.type]?.tint || "ink" } }, refs.type, icon("caret-down", 11)),
       h("div.line-main", refs.text, refs.count, refs.peek, refs.notes),
       h("div.line-actions",
-        act("up", "arrow-up", () => this.move(r, -1)),
-        act("down", "arrow-down", () => this.move(r, 1)),
-        act("add", "plus", () => this.addBelow(r)),
-        act("del", "trash", () => this.remove(r)),
+        act("up", "arrow-up", () => this.move(r, -1), "Move line up"),
+        act("down", "arrow-down", () => this.move(r, 1), "Move line down"),
+        act("add", "plus", () => this.addBelow(r), "Add a line below"),
+        act("del", "trash", () => this.remove(r), "Delete line"),
         refs.more),
       refs.detail);
     refs.type.value = SCENES[r.line.scene.type] ? r.line.scene.type : "concept";
