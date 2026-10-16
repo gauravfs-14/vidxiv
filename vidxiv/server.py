@@ -350,7 +350,8 @@ def delete_output(job_id: str, output_id: str):
 def files(job_id: str, path: str, download: bool = False):
     job = get_job(job_id)
     target = (job.dir / path).resolve()
-    if not any(str(target).startswith(str((job.dir / d).resolve()) + "/") for d in FILE_DIRS) or not target.is_file():
+    allowed = target == (job.dir / "paper" / "paper.pdf").resolve() or any(str(target).startswith(str((job.dir / d).resolve()) + "/") for d in FILE_DIRS)
+    if not allowed or not target.is_file():
         raise HTTPException(404, "Not found")
     return FileResponse(target, headers={"Cache-Control": "no-cache"}, filename=target.name if download else None)
 

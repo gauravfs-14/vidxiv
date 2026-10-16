@@ -15,7 +15,16 @@ Apply the `unslop` skill to every word of narration, and the `video-taste` skill
 - `paper/paper.md`: full paper text with `##` section headings. Read the abstract, introduction, method, main results and limitations.
 - `paper/figures/fig-NN.png` and `paper/figures.json`: figures cut from the PDF. Open the images you might use and look at them.
 - `narration.txt` (only sometimes): fixed narration, one line per row. See "Fixed narration" below.
+- `paper/ai-figures.json` (you may write it): extra figure regions, see below.
 - `storyboard.schema.json`: the exact format. `references/scenes.md` explains each scene type. `references/example-storyboard.json` is a complete valid example.
+
+## Reading the paper without wasting tokens
+
+- Read `paper/paper.md` first. It is extracted text and costs far less than the PDF.
+- The figure PNGs in `paper/figures/` are already cropped. Open only the ones you might use.
+- Read `paper/paper.pdf` only for pages you need to see: a results table, a key equation, a figure the extracted crop got wrong or missed. Ask for those pages only
+  (for example pages 4 to 5), never the whole file. Skip references, appendices and related work unless the brief asks for them.
+- Do not summarize the paper to yourself in long notes. Work from the five points in step 1.
 
 ## Output
 
@@ -51,6 +60,20 @@ lists the rest. Repeat until it prints `OK`. Rewrite any line it flags with a st
 - **Length and detail.** Hit `targetLines` and about `targetSeconds` (a line is about 4 to 6 seconds). Cut words before adding lines. `detail` says how deep to go: more detail means more mechanism, more evidence and more caveats, never longer sentences.
 - **Look.** If `brief.json` has a `look` other than `auto`, copy it into `look`. If it is `auto`, choose one using `video-taste` section 1 and set `look`. Never default to cream and terracotta.
 - **Kickers are rare.** At most one line in three has a `kicker`, none on the title and outro.
+
+## Figure regions
+
+The extracted figures can miss tables, merge panels or crop badly. When you need something better, add a region instead of describing it. Write `paper/ai-figures.json`,
+a JSON list, and use the ids in your scenes:
+
+```json
+[{"id": "x-03", "label": "Table 2", "kind": "table", "page": 5, "bbox": [0.08, 0.31, 0.92, 0.58], "caption": "Results on WMT 2014"}]
+```
+
+- Ids continue from `nextRegionId` in `brief.json` (`x-03`, `x-04`, ...). Never reuse an existing id.
+- `page` counts from 1. `bbox` is `[x0, y0, x1, y1]` as fractions of the page width and height, origin top left. Include axis labels and panel letters, leave out the caption text and body text.
+- `./validate.sh` crops every region into `paper/figures/` and tells you where. Open the crop once to check it, adjust the box if it is off, and stop there.
+- Keep it to what the video needs, usually zero to three regions. A table you want on screen as numbers is better done as `bars` or `stat`. Use a table region only when the table itself is the point.
 
 ## Fixed narration
 

@@ -13,7 +13,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import config, jobs, schema, script
+from . import config, jobs, paper, schema, script
 from .jobs import Job
 
 AGENT_TIMEOUT = 20 * 60
@@ -130,7 +130,8 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
     (d / "brief.json").write_text(json.dumps({
         "targetSeconds": seconds, "targetLines": n_lines, "detail": detail, "look": brief.get("look", "auto"),
         "userNotes": brief.get("instructions", ""), "paper": {k: paper.get(k) for k in ("title", "authors", "abstract", "url", "published")},
-        "figures": [{k: f[k] for k in ("id", "label", "caption", "width", "height")} for f in figures],
+        "figures": [{k: f[k] for k in ("id", "label", "caption", "width", "height", "page") if k in f} for f in figures],
+        "pdfPages": (paper or {}).get("pages"), "nextRegionId": _next_region_id(figures),
     }, indent=2))
     (d / "storyboard.schema.json").write_text(json.dumps(schema.json_schema(), indent=1))
     nf = d / "narration.txt"
@@ -140,6 +141,11 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
         nf.unlink()
 
 
+def _next_region_id(figures: list[dict]) -> str:
+    used = [int(f["id"][2:]) for f in figures if f["id"].startswith("x-") and f["id"][2:].isdigit()]
+    return f"x-{max(used, default=0) + 1:02d}"
+
+
 def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = None) -> str:
     seconds, n_lines, detail = config.target(brief)
     if problems:
@@ -147,7 +153,8 @@ def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = No
                 "\nFix the file in place, then run ./validate.sh storyboard.json until it prints OK. Change nothing else.")
     p = ("Write ./storyboard.json for the explainer video described in ./brief.json. "
          "Read ./skills/paper-video/SKILL.md, ./skills/video-taste/SKILL.md and ./skills/unslop/SKILL.md first and follow them. "
-         "Read ./paper/paper.md for the content. Open the figure PNGs you plan to use (./paper/figures/) and look at them before choosing zoom regions or callouts. "
+         "Read ./paper/paper.md for the content. It is plain extracted text, so it is cheap. Open the figure PNGs you plan to use (./paper/figures/) and look at them before choosing zoom regions or callouts. "
+         "Only when you need to see something the text cannot show (a table, an equation, a figure whose crop is wrong or missing), read just those pages of ./paper/paper.pdf, never the whole file. "
          f"Target about {seconds} seconds of narration, {n_lines} lines. Level of detail: {detail} "
          "When the file is written, run ./validate.sh storyboard.json and fix every problem until it prints OK.")
     if fixed_lines:
@@ -160,19 +167,22 @@ def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = No
 
 # ---------------------------------------------------------------- running
 
-def _claude_cmd(prompt: str, model: str) -> list[str]:
+def _claude_cmd(prompt: str, model: str, validator: str = "./validate.sh") -> list[str]:
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
-           "--allowedTools", "Read", "Write", "Edit", "Glob", "Grep", "Bash(./validate.sh:*)"]
+           "--allowedTools", "Read", "Write", "Edit", "Glob", "Grep", f"Bash({validator}:*)"]
     if model:
         cmd += ["--model", model]
     return cmd
 
 
-def _codex_cmd(prompt: str, model: str, job_dir: Path) -> list[str]:
+def _codex_cmd(prompt: str, model: str, job_dir: Path, images: tuple[Path, ...] = ()) -> list[str]:
     cmd = ["codex", "exec", "--json", "--skip-git-repo-check", "--sandbox", "workspace-write", "-C", str(job_dir)]
     if model:
         cmd += ["-m", model]
-    return cmd + [prompt]
+    cmd += [prompt]
+    for img in images:
+        cmd += ["-i", str(img)]
+    return cmd
 
 
 def _describe_event(line: str) -> str | None:
@@ -212,22 +222,22 @@ def _describe_codex(line: str) -> str | None:
     return None
 
 
-def run_agent(job: Job, agent: str, model: str, prompt: str) -> None:
-    job.log("script", f"Running {agent} ({model or 'default model'})")
+def run_agent(job: Job, agent: str, model: str, prompt: str, stage: str = "script", validator: str = "./validate.sh", images: tuple[Path, ...] = ()) -> None:
+    job.log(stage, f"Running {agent} ({model or 'default model'})")
     state = {"steps": 0}
     err_tail: list[str] = []
 
     def on_line(line: str) -> None:
         msg = _describe_event(line) if agent == "claude" else _describe_codex(line)
         if msg:
-            job.log("script", msg)
+            job.log(stage, msg)
             err_tail.append(msg)
             del err_tail[:-6]
             state["steps"] += 1
-            job.progress("script", min(0.9, 0.05 + state["steps"] * 0.03), msg[:100])
+            job.progress(stage, min(0.9, 0.05 + state["steps"] * 0.03), msg[:100])
 
-    cmd = _claude_cmd(prompt, model) if agent == "claude" else _codex_cmd(prompt, model, job.dir)
-    code = job.run(cmd, "script", on_line=on_line, timeout=AGENT_TIMEOUT)
+    cmd = _claude_cmd(prompt, model, validator) if agent == "claude" else _codex_cmd(prompt, model, job.dir, images)
+    code = job.run(cmd, stage, on_line=on_line, timeout=AGENT_TIMEOUT)
     if code != 0:
         hint = " | ".join(err_tail[-3:])
         if re.search(r"login|auth|api key|unauthor", hint, re.I):
@@ -258,7 +268,12 @@ def generate_storyboard(job: Job, agent: str, model: str = "", fixed_lines: list
             problems = [f"storyboard.json is not valid JSON: {e}"]
             job.log("script", problems[0])
             continue
+        added, region_problems = paper.add_regions(job.dir)
+        for f in added:
+            job.log("script", f"Cropped region {f['id']} from page {f['page']}")
+        fig_ids = {f["id"] for f in job.figures()}
         data, problems = finalize(data, fig_ids, fixed_lines)
+        problems = region_problems + problems
         if not problems:
             job.storyboard_path.write_text(json.dumps(data, indent=2))
             return data

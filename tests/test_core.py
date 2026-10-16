@@ -73,3 +73,24 @@ def test_match_lines_finds_last_retake():
     spans = voice._match_lines(heard, ["the cat sat on the mat", "then dogs bark loud"])
     assert spans[0] is not None and spans[0][0] == pytest.approx(3 * 0.4)  # second attempt, not the false start
     assert spans[1] is not None and spans[1][0] > spans[0][1]
+
+
+def test_add_regions_crops_and_reports_bad_boxes(tmp_path):
+    import pymupdf
+
+    (tmp_path / "paper").mkdir()
+    doc = pymupdf.open()
+    page = doc.new_page(width=600, height=800)
+    page.draw_rect(pymupdf.Rect(100, 200, 500, 400), color=(0, 0, 1), fill=(0.8, 0.9, 1))
+    doc.save(tmp_path / "paper" / "paper.pdf")
+    (tmp_path / "paper" / "ai-figures.json").write_text(json.dumps([
+        {"id": "x-01", "label": "Table 1", "kind": "table", "page": 1, "bbox": [0.1, 0.2, 0.9, 0.55], "caption": "A box"},
+        {"id": "x-02", "page": 3, "bbox": [0.1, 0.2, 0.9, 0.5]},
+        {"id": "x-03", "page": 1, "bbox": [0.5, 0.2, 0.4, 0.5]},
+        {"id": "bad", "page": 1, "bbox": [0.1, 0.1, 0.9, 0.5]},
+    ]))
+    added, problems = paper.add_regions(tmp_path)
+    assert [f["id"] for f in added] == ["x-01"]
+    assert (tmp_path / "paper" / "figures" / "x-01.png").exists()
+    assert len(problems) == 3
+    assert json.loads((tmp_path / "paper" / "figures.json").read_text())[0]["kind"] == "table"

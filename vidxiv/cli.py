@@ -33,13 +33,18 @@ def cmd_validate(a) -> int:
     except (OSError, ValueError) as e:
         print(f"PROBLEM: cannot read {path}: {e}")
         return 1
+    from . import paper
+
+    added, region_problems = paper.add_regions(path.parent.resolve())
+    for f in added:
+        print(f"Region {f['id']} cropped to paper/figures/{f['file']} ({f['width']}x{f['height']}). Open it to check the crop.")
     fig_file = Path(a.figures)
     figs = {f["id"] for f in json.loads(fig_file.read_text())} if fig_file.exists() else None
     for ln in data.get("lines", []) if isinstance(data, dict) else []:
         if isinstance(ln, dict) and isinstance(ln.get("text"), str):
             ln["text"] = script.clean(ln["text"])
     schema.repair(data)
-    problems = schema.check(script.prune(data), figs)
+    problems = region_problems + schema.check(script.prune(data), figs)
     if problems:
         print("PROBLEMS:")
         for p in problems:

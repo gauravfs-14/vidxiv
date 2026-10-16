@@ -240,6 +240,63 @@ def extract_figures(doc: pymupdf.Document, out_dir: Path, log=print) -> list[dic
     return found
 
 
+# ---------------------------------------------------------------- agent-defined regions
+
+REGION_FILE = "ai-figures.json"
+REGION_ID = re.compile(r"^x-\d{2}$")
+
+
+def add_regions(job_dir: Path) -> tuple[list[dict], list[str]]:
+    """Crop the regions the script agent listed in paper/ai-figures.json and add them to figures.json.
+
+    Each region is {id: "x-01", label, kind, page (1-based), bbox: [x0, y0, x1, y1] as fractions of the page, caption}.
+    Returns (figures added or updated, problems). Bad regions are reported, never fatal.
+    """
+    pdir = job_dir / "paper"
+    src = pdir / REGION_FILE
+    if not src.exists():
+        return [], []
+    problems: list[str] = []
+    try:
+        regions = json.loads(src.read_text())
+        assert isinstance(regions, list)
+    except (ValueError, AssertionError):
+        return [], [f"{REGION_FILE} must be a JSON list of regions"]
+    doc = pymupdf.open(pdir / "paper.pdf")
+    figs = json.loads((pdir / "figures.json").read_text()) if (pdir / "figures.json").exists() else []
+    by_id = {f["id"]: f for f in figs}
+    done: list[dict] = []
+    (pdir / "figures").mkdir(exist_ok=True)
+    for i, r in enumerate(regions):
+        rid = r.get("id", "")
+        try:
+            if not REGION_ID.match(rid):
+                raise ValueError("id must look like x-01")
+            page_no = int(r["page"])
+            if not 1 <= page_no <= doc.page_count:
+                raise ValueError(f"page {page_no} is outside 1 to {doc.page_count}")
+            x0, y0, x1, y1 = (float(v) for v in r["bbox"])
+            if not (0 <= x0 < x1 <= 1 and 0 <= y0 < y1 <= 1):
+                raise ValueError("bbox must be [x0, y0, x1, y1] as fractions with x0 < x1 and y0 < y1")
+            if (x1 - x0) < 0.08 or (y1 - y0) < 0.04:
+                raise ValueError("bbox is too small")
+            page = doc[page_no - 1]
+            clip = pymupdf.Rect(x0 * page.rect.width, y0 * page.rect.height, x1 * page.rect.width, y1 * page.rect.height)
+            pix = _autocrop(page.get_pixmap(clip=clip, dpi=200, alpha=False))
+            if pix.width > 2400:
+                pix = page.get_pixmap(clip=clip, dpi=int(200 * 2400 / pix.width), alpha=False)
+            pix.save(pdir / "figures" / f"{rid}.png")
+        except (KeyError, TypeError, ValueError) as e:
+            problems.append(f"{REGION_FILE} item {i + 1} ({rid or 'no id'}): {e}")
+            continue
+        entry = {"id": rid, "file": f"{rid}.png", "page": page_no, "label": str(r.get("label") or f"Page {page_no}")[:40],
+                 "caption": str(r.get("caption") or "")[:300], "kind": str(r.get("kind") or "figure"), "width": pix.width, "height": pix.height}
+        by_id[rid] = entry
+        done.append(entry)
+    (pdir / "figures.json").write_text(json.dumps(list(by_id.values()), indent=2))
+    return done, problems
+
+
 # ---------------------------------------------------------------- entry points
 
 def ingest(job_dir: Path, source: dict, upload: Path | None = None, log=print) -> dict:
