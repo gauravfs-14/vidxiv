@@ -183,9 +183,8 @@ def _autocrop(pix: pymupdf.Pixmap, pad: int = 14) -> pymupdf.Pixmap:
         y0, y1 = max(0, ys.min() - pad), min(pix.height, ys.max() + pad)
         if (x1 - x0) * (y1 - y0) > 0.97 * pix.width * pix.height:
             return pix
-        out = pymupdf.Pixmap(pix.colorspace, pymupdf.IRect(0, 0, x1 - x0, y1 - y0), pix.alpha)
-        out.copy(pix, pymupdf.IRect(x0, y0, x1, y1))
-        return out
+        crop = np.ascontiguousarray(a[y0:y1, x0:x1])
+        return pymupdf.Pixmap(pymupdf.csRGB, int(x1 - x0), int(y1 - y0), crop.tobytes(), False)
     except Exception:  # noqa: BLE001
         return pix
 
@@ -238,6 +237,19 @@ def extract_figures(doc: pymupdf.Document, out_dir: Path, log=print) -> list[dic
             if len(found) >= MAX_FIGURES:
                 return found
     return found
+
+
+def render_page(job_dir: Path, number: int, dpi: int = 100) -> Path:
+    """Render one PDF page to paper/pages/page-NN.png so an agent can look at it. Cached."""
+    pdir = job_dir / "paper"
+    doc = pymupdf.open(pdir / "paper.pdf")
+    if not 1 <= number <= doc.page_count:
+        raise ValueError(f"The PDF has {doc.page_count} pages. Ask for a page from 1 to {doc.page_count}.")
+    out = pdir / "pages" / f"page-{number:02d}.png"
+    if not out.exists():
+        out.parent.mkdir(exist_ok=True)
+        doc[number - 1].get_pixmap(dpi=dpi, alpha=False).save(out)
+    return out
 
 
 # ---------------------------------------------------------------- agent-defined regions

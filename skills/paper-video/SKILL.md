@@ -22,8 +22,9 @@ Apply the `unslop` skill to every word of narration, and the `video-taste` skill
 
 - Read `paper/paper.md` first. It is extracted text and costs far less than the PDF.
 - The figure PNGs in `paper/figures/` are already cropped. Open only the ones you might use.
-- Read `paper/paper.pdf` only for pages you need to see: a results table, a key equation, a figure the extracted crop got wrong or missed. Ask for those pages only
-  (for example pages 4 to 5), never the whole file. Skip references, appendices and related work unless the brief asks for them.
+- To see a page (a results table, a key equation, a figure the extracted crop got wrong or missed) run `./page.sh 5`, then open `paper/pages/page-05.png`.
+  Do this only for the pages you need. Do not read `paper/paper.pdf` itself: it is slower, costs more, and may not work on this machine.
+  Skip references, appendices and related work unless the brief asks for them.
 - Do not summarize the paper to yourself in long notes. Work from the five points in step 1.
 
 ## Output
@@ -72,7 +73,7 @@ a JSON list, and use the ids in your scenes:
 
 - Ids continue from `nextRegionId` in `brief.json` (`x-03`, `x-04`, ...). Never reuse an existing id.
 - `page` counts from 1. `bbox` is `[x0, y0, x1, y1]` as fractions of the page width and height, origin top left. Include axis labels and panel letters, leave out the caption text and body text.
-- `./validate.sh` crops every region into `paper/figures/` and tells you where. Open the crop once to check it, adjust the box if it is off, and stop there.
+- Find the table or figure with `./page.sh N` first, so the box comes from what you saw, not a guess. `./validate.sh` crops every region into `paper/figures/` and tells you where. Open the crop once, adjust the box if it is off, and stop there.
 - Keep it to what the video needs, usually zero to three regions. A table you want on screen as numbers is better done as `bars` or `stat`. Use a table region only when the table itself is the point.
 
 ## Fixed narration

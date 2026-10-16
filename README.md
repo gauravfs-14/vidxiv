@@ -9,7 +9,7 @@ Claude Code or Codex CLI you already have installed, the voice is a local model,
 
 ## What it does
 
-1. **Reads the paper.** Give it an arXiv id, an arXiv link, or a PDF. It extracts the text and cuts the figures out of the PDF.
+1. **Reads the paper.** Give it an arXiv id, an arXiv link, or a PDF. It extracts the text and cuts the figures out of the PDF locally, which costs no tokens. A built-in PDF viewer opens beside your work so you can check the script against the paper.
 2. **Writes the script.** An agent (Claude Code or Codex) reads the paper and writes narration plus a scene for every line,
    using the `paper-video` and `unslop` skills in this repo. Or you paste your own narration, or upload a recording and use its transcript.
 3. **Narrates it.** A local neural voice (Kokoro), macOS system voices, a recording you make in the browser line by line,
@@ -91,7 +91,7 @@ The storyboard format lives in `vidxiv/schema.py`. The props the engine reads ar
 
 ## Limits
 
-- Figure extraction relies on "Figure N" captions. Papers with unusual layouts may yield fewer or oddly cropped figures. Scanned PDFs have no text and are rejected.
+- Local figure extraction relies on "Figure N" captions. When it misses something the video needs, such as a results table, the script agent looks at the page (`./page.sh N` renders one page image) and adds a cropped region. The agent reads the extracted text, not the whole PDF, to keep token use down. Scanned PDFs have no text and are rejected.
 - Narration timing for your own recordings comes from a speech model and can be off on heavy accents, numbers and symbols. Captions fall back to estimated timing for words it cannot match.
 - Equations are rendered from LaTeX written by the agent. If a formula does not parse, the scene shows it as plain monospace text.
 - The agent can misread a paper. Read the script before rendering, especially numbers.

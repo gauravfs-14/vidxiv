@@ -59,6 +59,19 @@ def cmd_validate(a) -> int:
     return 0
 
 
+def cmd_page(a) -> int:
+    """Used by the script agent: render one PDF page to an image it can open."""
+    from . import paper
+
+    try:
+        out = paper.render_page(Path(a.dir).resolve(), a.number)
+    except (ValueError, OSError) as e:
+        print(f"PROBLEM: {e}")
+        return 1
+    print(f"Saved {out.relative_to(Path(a.dir).resolve())}. Open it to look at the page.")
+    return 0
+
+
 def cmd_doctor(a) -> int:
     from . import agents, render, voice
 
@@ -184,6 +197,10 @@ def main(argv: list[str] | None = None) -> int:
     v.add_argument("file")
     v.add_argument("--figures", default="paper/figures.json")
     v.set_defaults(fn=cmd_validate)
+    pg = sub.add_parser("page", help="render one PDF page to an image (used by the script agent)")
+    pg.add_argument("number", type=int)
+    pg.add_argument("--dir", default=".")
+    pg.set_defaults(fn=cmd_page)
     d = sub.add_parser("doctor", help="check what is installed")
     d.set_defaults(fn=cmd_doctor)
     st = sub.add_parser("setup", help="install the video engine and sound effects")

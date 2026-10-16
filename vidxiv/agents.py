@@ -124,6 +124,9 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
     wrapper = d / "validate.sh"
     wrapper.write_text(f'#!/bin/sh\ncd "$(dirname "$0")"\nPYTHONPATH="{config.ROOT}" exec "{sys.executable}" -m vidxiv validate "$@"\n')
     wrapper.chmod(0o755)
+    pager = d / "page.sh"
+    pager.write_text(f'#!/bin/sh\ncd "$(dirname "$0")"\nPYTHONPATH="{config.ROOT}" exec "{sys.executable}" -m vidxiv page --dir . "$@"\n')
+    pager.chmod(0o755)
     seconds, n_lines, detail = config.target(brief)
     paper = job.paper() or {}
     figures = job.figures()
@@ -154,7 +157,7 @@ def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = No
     p = ("Write ./storyboard.json for the explainer video described in ./brief.json. "
          "Read ./skills/paper-video/SKILL.md, ./skills/video-taste/SKILL.md and ./skills/unslop/SKILL.md first and follow them. "
          "Read ./paper/paper.md for the content. It is plain extracted text, so it is cheap. Open the figure PNGs you plan to use (./paper/figures/) and look at them before choosing zoom regions or callouts. "
-         "Only when you need to see something the text cannot show (a table, an equation, a figure whose crop is wrong or missing), read just those pages of ./paper/paper.pdf, never the whole file. "
+         "Only when you need to see something the text cannot show (a table, an equation, a figure whose crop is wrong or missing), run ./page.sh N to render page N and open the image it saves. Never read the PDF itself. "
          f"Target about {seconds} seconds of narration, {n_lines} lines. Level of detail: {detail} "
          "When the file is written, run ./validate.sh storyboard.json and fix every problem until it prints OK.")
     if fixed_lines:
@@ -169,7 +172,7 @@ def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = No
 
 def _claude_cmd(prompt: str, model: str, validator: str = "./validate.sh") -> list[str]:
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
-           "--allowedTools", "Read", "Write", "Edit", "Glob", "Grep", f"Bash({validator}:*)"]
+           "--allowedTools", "Read", "Write", "Edit", "Glob", "Grep", f"Bash({validator}:*)", "Bash(./page.sh:*)"]
     if model:
         cmd += ["--model", model]
     return cmd
