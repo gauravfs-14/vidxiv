@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import __version__, agents, config, jobs, paper, pipeline, render, schema, script, voice
+from . import __version__, agents, config, install, jobs, paper, pipeline, render, schema, script, voice
 from .jobs import Job
 
 @asynccontextmanager
@@ -48,7 +48,10 @@ def get_job(job_id: str) -> Job:
 
 @app.get("/api/status")
 def status():
-    return {"version": __version__, "agents": agents.detect(), "tools": render.node_tools(), "voices": {k: {"ready": v["ready"], "label": v["label"]} for k, v in voice.engines().items()},
+    ag, tools = agents.detect(), render.node_tools()
+    missing = [n for n in ("claude", "codex") if not ag[n]["found"]] + [n for n in ("ffmpeg", "node") if not tools[n]]
+    return {"version": __version__, "platform": {"system": install.system(), "manager": install.manager()}, "install": install.hints(missing),
+            "agents": ag, "tools": tools, "voices": {k: {"ready": v["ready"], "label": v["label"]} for k, v in voice.engines().items()},
             "whisper": voice.whisper_ready(), "setup": SETUP}
 
 

@@ -27,9 +27,27 @@ def engine_ready() -> bool:
     return (config.ENGINE / "node_modules" / "remotion" / "package.json").exists()
 
 
+def node_version() -> str | None:
+    if not shutil.which("node"):
+        return None
+    try:
+        return subprocess.run(["node", "--version"], capture_output=True, text=True, timeout=10).stdout.strip().lstrip("v") or None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def node_ok() -> bool:
+    """Node 20 or newer. Older versions run but Remotion does not support them."""
+    v = node_version()
+    try:
+        return bool(v) and int(v.split(".")[0]) >= 20
+    except ValueError:
+        return False
+
+
 def node_tools() -> dict:
-    return {"node": bool(shutil.which("node")), "npm": bool(shutil.which("npm")), "ffmpeg": bool(shutil.which("ffmpeg")),
-            "engine": engine_ready()}
+    return {"node": node_ok(), "npm": bool(shutil.which("npm")), "ffmpeg": bool(shutil.which("ffmpeg")),
+            "engine": engine_ready(), "nodeVersion": node_version()}
 
 
 def ensure_engine(log=print) -> None:

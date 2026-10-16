@@ -1,4 +1,4 @@
-import { $ } from "./dom.js";
+import { $, $$, autosize, debounce } from "./dom.js";
 import { onConnection } from "./api.js";
 import { startRouter } from "./router.js";
 import { initTheme } from "./theme.js";
@@ -8,6 +8,9 @@ import { mountJob } from "./views/job.js";
 
 initTheme();
 initTips();
+
+// Text areas size themselves to their content, so they need to re-fit when the width changes.
+window.addEventListener("resize", debounce(() => $$("textarea").forEach(autosize), 120));
 
 const view = $("#view");
 const banner = $("#offline");

@@ -66,6 +66,8 @@ const TIPS = {
   "use this take": "Keep this recording for the line",
   "upload a file instead": "Choose an audio file instead of recording",
   "upload an audio file": "Choose an audio file instead of recording",
+  "copy command": "Copy this command to the clipboard, then paste it into a terminal",
+  "copied": "Copied",
   "dismiss": "Close this message",
   "previous": "Show the previous image",
   "next": "Show the next image",

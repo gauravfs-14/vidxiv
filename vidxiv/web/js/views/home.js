@@ -2,7 +2,7 @@ import { h, icon, replace, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
 import { jobHref, navigate } from "../router.js";
-import { toast, errorMessage, confirmDialog, emptyState, skel, themeControl } from "../ui.js";
+import { installHelp, toast, errorMessage, confirmDialog, emptyState, skel, themeControl } from "../ui.js";
 
 const STAGE_LABELS = [["ingest", "Paper"], ["script", "Script"], ["narration", "Narration"], ["render", "Video"]];
 
@@ -97,10 +97,10 @@ export function mountHome(root) {
     };
     const a = s.agents || {}, t = s.tools || {};
     const items = [
-      { ok: a.claude?.found, name: "Claude Code", note: "Not found. Script writing can use Codex or simple rules." },
-      { ok: a.codex?.found, name: "Codex", note: "Not found. Script writing can use Claude Code or simple rules." },
-      { ok: t.ffmpeg, name: "ffmpeg", note: "Not found. Narration and video need it. Install it with brew install ffmpeg." },
-      { ok: t.node, name: "Node.js", note: "Not found. The video engine needs it. Install it from nodejs.org." },
+      { ok: a.claude?.found, key: "claude", name: "Claude Code", note: "Not found. Script writing can use Codex or simple rules." },
+      { ok: a.codex?.found, key: "codex", name: "Codex", note: "Not found. Script writing can use Claude Code or simple rules." },
+      { ok: t.ffmpeg, key: "ffmpeg", name: "ffmpeg", note: "Not found. Narration and video need it." },
+      { ok: t.node, key: "node", name: "Node.js", note: t.nodeVersion ? `Version ${t.nodeVersion} is too old. The video engine needs 20 or newer.` : "Not found. The video engine needs it." },
       { ok: t.engine, name: "Video engine", note: "Not installed. Scene previews and video rendering are off.", action: !t.engine && setupAction("engine", "Install", !t.node) },
       { ok: s.voices?.kokoro?.ready, name: "Kokoro voice", note: "Not downloaded, about 340 MB. Narration uses system voices until it is.", action: !s.voices?.kokoro?.ready && setupAction("kokoro", "Download", false) },
       { ok: s.whisper, name: "Speech recognition", note: "Downloads the first time you split or transcribe a recording.", soft: true },
@@ -109,7 +109,7 @@ export function mountHome(root) {
     replace(envRow, h("span.env-label", "Environment"),
       items.map((it) => h(`span.env-item.${it.ok ? "ok" : it.soft ? "soft" : "warn"}`,
         icon(it.ok ? "check" : "warning-circle", 13), it.name, !it.ok && it.action)));
-    replace(envNotes, items.filter((it) => !it.ok && !it.soft).map((it) => h("li", h("strong", it.name + ". "), it.note)));
+    replace(envNotes, items.filter((it) => !it.ok && !it.soft).map((it) => h("li", h("p", h("strong", it.name + ". "), it.note), it.key && installHelp(it.key, s, { note: false }))));
     const setupErr = Object.entries(setup).find(([, v]) => v.state === "error");
     if (setupErr) envNotes.append(h("li.err", { role: "alert" }, `${setupErr[1].message} Try again, or check your network.`));
   }

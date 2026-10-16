@@ -1,7 +1,7 @@
 import { h, icon, replace, autosize, fmtSize, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { progressBar, LogFeed, segmented, field as fieldEl, toast, errorMessage, confirmDialog, lightbox, skel, emptyState } from "../ui.js";
+import { installHelp, progressBar, LogFeed, segmented, field as fieldEl, toast, errorMessage, confirmDialog, lightbox, skel, emptyState } from "../ui.js";
 import { recordClip } from "../recorder.js";
 import { StoryboardEditor } from "./storyboard.js";
 import { SCENES } from "../scenes.js";
@@ -36,8 +36,9 @@ const presetFor = (s) => PRESETS.find((p) => p.seconds === s);
 export function installEngineHint() {
   if (!env.data || env.engineReady) return null;
   const node = env.data?.tools?.node;
-  return h("p.hint.engine-hint", node ? "The video engine is not installed. " : "Node.js is not installed, so the video engine cannot be set up. ",
-    node && h("button.link-btn", { type: "button", onclick: () => env.setup("engine").catch((e) => toast(errorMessage(e), "error")) }, "Install video engine"));
+  return h("div.engine-hint", h("p.hint", node ? "The video engine is not installed. " : "Node.js 20 or newer is not installed, so the video engine cannot be set up. ",
+    node && h("button.link-btn", { type: "button", onclick: () => env.setup("engine").catch((e) => toast(errorMessage(e), "error")) }, "Install video engine")),
+    !node && installHelp("node", env.data));
 }
 
 export function createScript({ store, sec }) {

@@ -1,7 +1,7 @@
 import { h, icon, replace, debounce, fmtDuration, fmtSize, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { progressBar, LogFeed, field, toast, errorMessage, emptyState, confirmDialog } from "../ui.js";
+import { installHelp, progressBar, LogFeed, field, toast, errorMessage, emptyState, confirmDialog } from "../ui.js";
 import { installEngineHint } from "./script.js";
 
 const FORMATS = [
@@ -134,7 +134,7 @@ export function createVideo({ store, sec }) {
     if (env.data && !env.ffmpeg) reasons.push("ffmpeg is missing.");
     btn.disabled = running || noFormat || reasons.length > 0;
     why.textContent = reasons.join(" ");
-    replace(hintSlot, has ? installEngineHint() : null);
+    replace(hintSlot, has ? installEngineHint() : null, env.data && !env.ffmpeg ? installHelp("ffmpeg", env.data) : null);
     progress.hidden = !running;
     bar.set(st.progress, "Rendering video");
     msg.textContent = running ? st.message : "";

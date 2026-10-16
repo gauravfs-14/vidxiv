@@ -243,3 +243,32 @@ export function downloadBlob(blob, name) {
   a.click();
   a.remove();
 }
+
+/** A shell command in a box with a copy button. */
+export function commandLine(command) {
+  const btn = h("button.icon-btn", { type: "button", "aria-label": "Copy command" }, icon("copy", 14));
+  btn.onclick = async () => {
+    try { await navigator.clipboard.writeText(command); } catch {
+      const r = document.createRange();
+      r.selectNodeContents(code);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      document.execCommand?.("copy");
+    }
+    replace(btn, icon("check", 14));
+    btn.setAttribute("aria-label", "Copied");
+    setTimeout(() => { replace(btn, icon("copy", 14)); btn.setAttribute("aria-label", "Copy command"); }, 1500);
+  };
+  const code = h("code", command);
+  return h("div.cmd", code, btn);
+}
+
+/** Install help for a missing tool: its note and one command for this machine. Null when there is nothing to show. */
+export function installHelp(name, data, { note = true } = {}) {
+  const hint = data?.install?.[name];
+  if (!hint) return null;
+  return h("div.install-help",
+    note && hint.note && h("p.hint", hint.note),
+    hint.prerequisite && h("div", h("p.hint", hint.prerequisite.note), commandLine(hint.prerequisite.command)),
+    commandLine(hint.command));
+}
