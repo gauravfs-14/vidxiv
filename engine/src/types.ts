@@ -40,6 +40,9 @@ export type LineProps = {
 
 export type FigureAsset = {file: string; width: number; height: number; caption?: string | null};
 
+/** Pace: `speed` multiplies animation rates (2 plays every reveal in half the frames), `words` caps caption chunks. */
+export type PaceProps = {name: string; speed: number; words: number | null; pre: number; overlap: number};
+
 export type VideoProps = {
   fps: number;
   total: number;
@@ -47,6 +50,7 @@ export type VideoProps = {
   look: Look;
   /** Legacy name for `look`: paper maps to studio, ink to night. */
   palette?: string;
+  pace: PaceProps;
   captions: boolean;
   progressBar: boolean;
   music: {file: string; volume: number} | null;

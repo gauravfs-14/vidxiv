@@ -131,7 +131,7 @@ def prepare_workspace(job: Job, brief: dict, texts: list[str] | None = None) -> 
     paper = job.paper() or {}
     figures = job.figures()
     (d / "brief.json").write_text(json.dumps({
-        "targetSeconds": seconds, "targetLines": n_lines, "detail": detail, "look": brief.get("look", "auto"),
+        "targetSeconds": seconds, "targetLines": n_lines, "detail": detail, "pace": config.pace(brief)["name"], "paceGuide": config.pace(brief)["guide"], "look": brief.get("look", "auto"),
         "userNotes": brief.get("instructions", ""), "paper": {k: paper.get(k) for k in ("title", "authors", "abstract", "url", "published")},
         "figures": [{k: f[k] for k in ("id", "label", "caption", "width", "height", "page") if k in f} for f in figures],
         "pdfPages": (paper or {}).get("pages"), "nextRegionId": _next_region_id(figures),
@@ -158,7 +158,7 @@ def build_prompt(brief: dict, fixed_lines: bool, problems: list[str] | None = No
          "Read ./skills/paper-video/SKILL.md, ./skills/video-taste/SKILL.md and ./skills/unslop/SKILL.md first and follow them. "
          "Read ./paper/paper.md for the content. It is plain extracted text, so it is cheap. Open the figure PNGs you plan to use (./paper/figures/) and look at them before choosing zoom regions or callouts. "
          "Only when you need to see something the text cannot show (a table, an equation, a figure whose crop is wrong or missing), run ./page.sh N to render page N and open the image it saves. Never read the PDF itself. "
-         f"Target about {seconds} seconds of narration, {n_lines} lines. Level of detail: {detail} "
+         f"Target about {seconds} seconds of narration, {n_lines} lines. Level of detail: {detail} Pace: {config.pace(brief)['guide']} "
          "When the file is written, run ./validate.sh storyboard.json and fix every problem until it prints OK.")
     if fixed_lines:
         p += (" The narration is fixed: ./narration.txt has one line of narration per row. Copy each row into the `text` field of one storyboard line, "

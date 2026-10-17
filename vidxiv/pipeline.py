@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import json
 import shutil
+import time
 from pathlib import Path
 
-from . import agents, config, jobs, paper, render, schema, script, voice
+from . import agents, config, jobs, paper, render, review, schema, script, voice
 from .jobs import Job
 
 
@@ -97,7 +98,129 @@ def start_preview(job: Job) -> None:
 
 
 def start_render(job: Job) -> None:
-    jobs.background(job, "render", lambda: render.render(job))
+    jobs.background(job, "render", lambda: _render_all(job))
+
+
+REVIEW_SHARE = 0.55  # of the render stage's progress bar, when a review runs before the final render
+
+
+def _render_all(job: Job) -> None:
+    """Optionally review a draft and fix what the agent finds, then render the final videos from the fixed storyboard."""
+    brief = job.load()["brief"]
+    rounds = config.review_rounds(brief)
+    share = 0.0
+    if not rounds:
+        job.patch(review=None)
+    elif (agent := agents.pick(brief.get("agent", "auto"))) is None:
+        job.log("render", "Review skipped: no Claude Code or Codex CLI is available to look at the draft")
+        job.patch(review={"status": "skipped", "reason": "No Claude Code or Codex CLI was available to review the video.", "maxRounds": rounds, "rounds": []})
+    else:
+        _review_loop(job, agent, brief.get("model", ""), rounds)
+        share = REVIEW_SHARE
+    job.check()
+    render.render(job, share, 1.0)
+
+
+def _review_loop(job: Job, agent: str, model: str, rounds: int) -> None:
+    """Draft, measure, show the agent the frames, apply its fixes, and go again until it is satisfied, nothing changes, or the rounds run out.
+    A failed review never blocks the render: the video is rendered from the storyboard as it stands."""
+    rec = {"agent": agent, "model": model, "maxRounds": rounds, "status": "running", "rounds": [], "started": time.time()}
+    job.patch(review=rec)
+    per = REVIEW_SHARE / rounds
+    for n in range(1, rounds + 1):
+        job.check()
+        lo = per * (n - 1)
+        job.log("render", f"Review round {n} of {rounds}")
+        entry = {"round": n, "issues": [], "changed": 0, "summary": "", "satisfied": False, "remaining": []}
+        rec["rounds"].append(entry)
+        try:
+            render.ensure_narrated(job, "render")
+            issues = review.check_voice(job, lambda m: job.log("render", m))
+            draft = render.render_draft(job, "render", lo, lo + per * 0.6)
+            job.progress("render", lo + per * 0.62, f"Review {n} of {rounds}: checking the draft")
+            brief = job.load()["brief"]
+            issues += review.check_assets(draft["props"], brief)
+            issues += review.check_video(draft["file"], draft["props"]["total"] / config.FPS)
+            out = job.dir / "review" / f"round-{n}"
+            sheets, legend = review.contact_sheets(draft["file"], draft["props"], review.orientation(draft["format"]), out)
+            entry["issues"] = issues
+            (out / "report.json").write_text(json.dumps({"issues": issues, "sheets": legend}, indent=2))
+            for it in issues:
+                job.log("render", f"Check: {it['kind']}, {('line ' + str(it['line'] + 1)) if it['line'] is not None else 'video'} {it['detail']}")
+            job.patch(review=rec)
+            editable = sorted({it["line"] for it in issues if it["kind"] == "voice" and it["fixable"] and it["line"] is not None})
+            agents.prepare_workspace(job, brief, None)
+            (job.dir / "review" / "verdict.json").unlink(missing_ok=True)
+            job.progress("render", lo + per * 0.7, f"Review {n} of {rounds}: {agent} is looking at the draft")
+            changed = _agent_pass(job, agent, model, review.build_prompt(n, rounds, legend, issues, editable), editable, tuple(sheets))
+        except jobs.Cancelled:
+            raise
+        except Exception as e:  # noqa: BLE001
+            job.log("render", f"Review round {n} stopped: {e}")
+            entry["error"] = str(e)[:400]
+            rec["status"] = "failed"
+            break
+        verdict = review.read_verdict(job)
+        entry.update(changed=changed, summary=verdict["summary"], remaining=verdict["remaining"], satisfied=verdict["satisfied"] and changed == 0)
+        job.log("render", f"Review round {n}: {changed} line(s) changed. {verdict['summary']}")
+        if entry["satisfied"]:
+            rec["status"] = "satisfied"
+        elif changed == 0:
+            rec["status"] = "stalled"  # nothing it could fix, and not content: another round would see the same draft
+        elif n == rounds:
+            rec["status"] = "limit"
+        job.patch(review=rec)
+        if rec["status"] != "running":
+            break
+    if rec["status"] == "running":
+        rec["status"] = "limit"
+    rec["finished"] = time.time()
+    (job.dir / "review" / "draft.mp4").unlink(missing_ok=True)
+    job.patch(review=rec)
+
+
+def _agent_pass(job: Job, agent: str, model: str, prompt: str, editable: list[int], sheets: tuple[Path, ...]) -> int:
+    """Run the reviewing agent on storyboard.json. Returns how many lines it changed.
+    Its edits are held to the same rules as any storyboard (validation), the line count and order, and the narration text except for
+    lines it was allowed to reword. If they cannot be made valid the original is restored and this raises."""
+    before = job.storyboard()
+    original = job.storyboard_path.read_text()
+    fig_ids = {f["id"] for f in job.figures()}
+    problems: list[str] = []
+    data: dict = {}
+    try:
+        for _ in range(2):
+            agents.run_agent(job, agent, model, prompt if not problems else agents.build_prompt({}, False, problems), images=sheets)
+            try:
+                data = json.loads(job.storyboard_path.read_text())
+            except (OSError, ValueError) as e:
+                problems = [f"storyboard.json is not valid JSON: {e}"]
+                continue
+            data, problems = _constrain(data, before, editable, fig_ids)
+            if not problems:
+                break
+            job.log("render", "Review edits did not validate:\n- " + "\n- ".join(problems))
+    finally:
+        job.storyboard_path.write_text(original)  # the real save happens below, through the normal path
+    if problems:
+        raise RuntimeError("The reviewer's edits did not validate: " + "; ".join(problems[:3]))
+    changed = sum(1 for a, b in zip(before["lines"], data["lines"]) if a != b)
+    if changed:
+        archive_storyboard(job)
+        saved, bad = save_storyboard(job, data)
+        if bad:
+            raise RuntimeError("The reviewer's edits did not validate: " + "; ".join(bad[:3]))
+    return changed
+
+
+def _constrain(data: dict, before: dict, editable: list[int], fig_ids: set[str]) -> tuple[dict, list[str]]:
+    lines = data.get("lines")
+    if not isinstance(lines, list) or len(lines) != len(before["lines"]):
+        return data, [f"storyboard.json must keep exactly {len(before['lines'])} lines in the same order, it has {len(lines) if isinstance(lines, list) else 'no'} lines"]
+    for i, (ln, old) in enumerate(zip(lines, before["lines"])):
+        if isinstance(ln, dict) and i not in editable:
+            ln["text"] = old["text"]
+    return agents.finalize(data, fig_ids)
 
 
 def save_storyboard(job: Job, data: dict) -> tuple[dict | None, list[str]]:

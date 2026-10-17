@@ -3,7 +3,7 @@ import {interpolate, useCurrentFrame} from 'remotion';
 import {useTheme} from '../theme';
 import {fitFont, useLayout} from '../layout';
 import {useScene} from '../context';
-import {Stage, clamp, prog, useEnter} from '../components';
+import {Stage, clamp, paceLen, prog, useEnter} from '../components';
 import {Leader} from '../marks';
 import {FigureCard, fitBox, Mono, useFigure} from './primitives';
 import type {SceneOf} from '../types';
@@ -48,7 +48,7 @@ export const FigureScene: React.FC<{scene: SceneOf<'figure'>}> = ({scene}) => {
   const zoomBox = z && (
     <div style={{position: 'absolute', left: `${z.x * 100}%`, top: `${z.y * 100}%`, width: `${z.w * 100}%`, height: `${z.h * 100}%`, opacity: 1 - zp}}>
       <svg width="100%" height="100%" style={{overflow: 'visible', display: 'block'}}>
-        <rect x="0" y="0" width="100%" height="100%" rx={r * 0.3 * u} fill="none" stroke={C.accent} strokeWidth={(5 * u) / sc} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - interpolate(frame, [zAt, zAt + 14], [0, 1], clamp)} />
+        <rect x="0" y="0" width="100%" height="100%" rx={r * 0.3 * u} fill="none" stroke={C.accent} strokeWidth={(5 * u) / sc} pathLength={1} strokeDasharray="1 1" strokeDashoffset={1 - interpolate(frame, [zAt, zAt + paceLen(14)], [0, 1], clamp)} />
       </svg>
     </div>
   );

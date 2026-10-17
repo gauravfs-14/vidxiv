@@ -3,7 +3,7 @@ import {interpolate, useCurrentFrame} from 'remotion';
 import {useTheme} from '../theme';
 import {fitFont, useLayout} from '../layout';
 import {useScene} from '../context';
-import {Stage, clamp, prog} from '../components';
+import {Stage, clamp, paceLen, prog} from '../components';
 import {Rule, Underline} from '../marks';
 import {Reveal} from './primitives';
 import type {SceneOf} from '../types';
@@ -26,7 +26,7 @@ export const Stat: React.FC<{scene: SceneOf<'stat'>}> = ({scene}) => {
   const cmp = scene.compare;
   const parsed = parseValue(scene.value);
   const t0 = S.start + 4;
-  const dur = 40;
+  const dur = paceLen(40);
   const t = interpolate(frame, [t0, t0 + dur], [0, 1], {...clamp, easing: (x) => 1 - Math.pow(1 - x, 4)});
   const size = fitFont(scene.value ?? '', stage.w * 0.9, stage.h * (isLandscape ? 0.62 : 0.4), (isLandscape ? 420 : 360) * u, 110 * u, 0.56, 0.9);
   const shown = parsed ? fmt(parsed.target * t, parsed.decimals, parsed.commas) : scene.value;

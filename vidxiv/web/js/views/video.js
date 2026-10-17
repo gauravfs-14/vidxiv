@@ -1,8 +1,9 @@
 import { h, icon, replace, debounce, fmtDuration, fmtSize, timeAgo } from "../dom.js";
 import { api } from "../api.js";
 import { env } from "../env.js";
-import { installHelp, progressBar, LogFeed, field, toast, errorMessage, emptyState, confirmDialog } from "../ui.js";
+import { installHelp, progressBar, LogFeed, field, segmented, toast, errorMessage, emptyState, confirmDialog } from "../ui.js";
 import { installEngineHint } from "./script.js";
+import { PACES, paceOf, REVIEW, REVIEW_MAX, reviewHelp } from "../pace.js";
 
 const FORMATS = [
   { value: "Vertical", ratio: "9 / 16", name: "Vertical", sub: "9:16 for Shorts and Reels" },
@@ -25,7 +26,7 @@ function swatch(look) {
 }
 
 export function createVideo({ store, sec }) {
-  const cfg = { formats: ["Vertical"], looks: ["auto"], captions: true, music: "warm" };
+  const cfg = { formats: ["Vertical"], looks: ["auto"], captions: true, music: "warm", pace: "standard", reviewRounds: 0 };
   let init = false, dirty = false;
 
   const save = debounce(async () => {
@@ -67,6 +68,17 @@ export function createVideo({ store, sec }) {
   const capLabel = h("label.switch", captions, h("span.track", h("span.thumb")), h("span", "Captions"));
   const music = h("select", { onchange: () => { cfg.music = music.value; changed(); } }, MUSIC.map(([v, l]) => h("option", { value: v }, l)));
 
+  // pace: animation speed, pauses and caption chunks. Writing for a pace happens in the script step.
+  const paceSeg = segmented("render-pace", PACES.map((p) => ({ value: p.value, label: p.label, sub: p.sub })), cfg.pace, (v) => { cfg.pace = v; changed(); }, "Pace");
+  const paceHelp = h("p.hint");
+  const paceGroup = h("div.field", h("span.label-like", "Pace"), paceSeg, paceHelp);
+
+  // review: the agent checks a draft and fixes problems before the final render
+  const reviewSeg = segmented("review-rounds", REVIEW, cfg.reviewRounds, (v) => { cfg.reviewRounds = +v; changed(); }, "Review rounds");
+  const reviewNote = h("p.hint");
+  const reviewGroup = h("div.field", h("span.label-like", "Review before rendering"), reviewSeg, reviewNote);
+  const reviewBox = h("div.review-box", { hidden: true });
+
   // run
   const bar = progressBar();
   const msg = h("p.progress-msg", { "aria-live": "polite" });
@@ -97,8 +109,9 @@ export function createVideo({ store, sec }) {
     h("div.video-form",
       fmtGroup, fmtErr, lookGroup, lookErr,
       h("div.opt-row", capLabel, field("Music", music)),
+      paceGroup, reviewGroup,
       h("div.render-row", btn, count, why, hintSlot)),
-    h("div.video-results", progress, msg, errBox, log, empty, outputs)));
+    h("div.video-results", progress, msg, errBox, log, reviewBox, empty, outputs)));
 
   let lastJob = null;
   function paint() { if (lastJob) update(lastJob); }
@@ -114,6 +127,12 @@ export function createVideo({ store, sec }) {
     lookInputs.forEach((i) => (i.checked = cfg.looks.includes(i.value)));
     captions.checked = cfg.captions;
     if (document.activeElement !== music) music.value = cfg.music;
+    paceSeg.set(cfg.pace);
+    paceHelp.textContent = paceOf(cfg.pace).help;
+    reviewSeg.set(cfg.reviewRounds);
+    const agentName = job.brief?.agent;
+    reviewNote.textContent = reviewHelp(cfg.reviewRounds, agentName);
+    paintReview(job.review, job.stages.render.state === "running");
 
     const st = job.stages.render;
     const running = st.state === "running";
@@ -156,6 +175,31 @@ export function createVideo({ store, sec }) {
     }
   }
 
+  const STATUS = {
+    satisfied: (r) => `The agent was satisfied with the draft after ${r.rounds.length} round${r.rounds.length === 1 ? "" : "s"}.`,
+    stalled: (r) => `Stopped after ${r.rounds.length} round${r.rounds.length === 1 ? "" : "s"}: the agent found nothing more it could fix by editing the script.`,
+    limit: (r) => `Reached the limit of ${r.maxRounds} round${r.maxRounds === 1 ? "" : "s"}.${r.rounds.at(-1)?.changed ? " The changes from the last round were not checked again." : ""}`,
+    failed: (r) => `The review stopped early${r.rounds.at(-1)?.error ? `: ${r.rounds.at(-1).error}` : "."} The video was rendered from the script as it was.`,
+    running: (r) => `Review round ${r.rounds.length} of ${r.maxRounds} is running.`,
+    skipped: (r) => r.reason || "The review was skipped.",
+  };
+  let reviewSig = "";
+  function paintReview(r, running) {
+    const sig = JSON.stringify([r, running]);
+    if (sig === reviewSig) return;
+    reviewSig = sig;
+    reviewBox.hidden = !r;
+    if (!r) return;
+    const rounds = (r.rounds || []).map((x) => h("li",
+      h("strong", `Round ${x.round}: `),
+      x.error ? `stopped. ${x.error}` : [`${x.issues.length ? `${x.issues.length} problem${x.issues.length === 1 ? "" : "s"} measured` : "no measured problems"}, ${x.changed} line${x.changed === 1 ? "" : "s"} changed. `, x.summary],
+      x.issues.length > 0 && h("ul.review-issues", x.issues.map((i) => h("li", `${i.line == null ? "Video" : `Line ${i.line + 1}`}, ${i.kind}: ${i.detail}`))),
+      x.remaining?.length > 0 && h("p.hint", "Could not fix: " + x.remaining.join("; "))));
+    replace(reviewBox, h("details.disclosure", { open: r.status === "failed" },
+      h("summary", h("strong", "Review. "), (STATUS[r.status] || (() => ""))(r)),
+      rounds.length > 0 && h("ol.review-rounds", rounds)));
+  }
+
   function card(o) {
     const fmt = FORMATS.find((f) => f.value === o.format);
     const look = LOOKS.find((l) => l.value === o.look);
@@ -166,6 +210,7 @@ export function createVideo({ store, sec }) {
       h("div.out-info",
         h("h4.out-name", `${look?.name || o.look}, ${o.format}`),
         h("p.out-meta", [fmtDuration(o.seconds), fmtSize(o.size)].filter(Boolean).join(", ")),
+        o.qa?.length > 0 && h("p.out-qa", { title: o.qa.join("\n") }, icon("warning-circle", 13), ` ${o.qa.length} problem${o.qa.length === 1 ? "" : "s"} found in the file: ${o.qa[0]}`),
         h("div.out-actions",
           h("a.btn.small", { href: `${o.url}?download=1`, download: "" }, icon("download-simple", 14), "Download"),
           h("button.btn.small.ghost", { type: "button", "aria-label": "Delete video", onclick: async () => {
@@ -175,6 +220,6 @@ export function createVideo({ store, sec }) {
   }
 
   const unsubEnv = env.subscribe(() => paint());
-  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], looks: (b.looks && b.looks.length ? b.looks : [b.look || "auto"]).filter((x) => LOOKS.some((l) => l.value === x)), captions: b.captions !== false, music: b.music || "warm" });
+  const pick = (b = {}) => ({ formats: b.formats || ["Vertical"], looks: (b.looks && b.looks.length ? b.looks : [b.look || "auto"]).filter((x) => LOOKS.some((l) => l.value === x)), captions: b.captions !== false, music: b.music || "warm", pace: paceOf(b.pace).value, reviewRounds: Math.max(0, Math.min(REVIEW_MAX, +b.reviewRounds || 0)) });
   return { update, destroy() { feed.destroy(); save.cancel(); unsubEnv(); } };
 }

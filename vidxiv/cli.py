@@ -124,9 +124,7 @@ def cmd_install_skills(a) -> int:
 
 def cmd_make(a) -> int:
     """Headless: paper in, MP4 out."""
-    from . import jobs, paper, pipeline, voice
-
-    from . import agents
+    from . import agents, config, jobs, paper, pipeline, voice
 
     if a.model:
         chosen = agents.pick(a.agent)
@@ -136,7 +134,7 @@ def cmd_make(a) -> int:
             return 2
     jobs.recover_interrupted()
     if a.seconds > 300:
-        print(f"Note: a {a.seconds // 60} minute video makes the agent read the whole paper and write about {round(a.seconds / 5.2)} lines. This uses a lot of tokens.", file=sys.stderr)
+        print(f"Note: a {a.seconds // 60} minute video makes the agent read the whole paper and write about {round(a.seconds / config.pace({"pace": a.pace})["line_seconds"])} lines. This uses a lot of tokens.", file=sys.stderr)
     if Path(a.source).exists():
         job = jobs.create({"type": "pdf", "filename": Path(a.source).name}, Path(a.source).stem)
         pipeline.start_ingest(job, Path(a.source).resolve())
@@ -147,7 +145,7 @@ def cmd_make(a) -> int:
             return 2
         job = jobs.create({"type": "arxiv", "id": aid, "url": f"https://arxiv.org/abs/{aid}"}, f"arXiv:{aid}")
         pipeline.start_ingest(job)
-    job.update(lambda s: s["brief"].update(seconds=a.seconds, detail=a.detail, formats=a.format, look=a.look[0], looks=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or ""))
+    job.update(lambda s: s["brief"].update(seconds=a.seconds, detail=a.detail, formats=a.format, look=a.look[0], looks=a.look, captions=not a.no_captions, music=a.music, instructions=a.notes or "", pace=a.pace, reviewRounds=a.review))
     if a.voice:
         job.update(lambda s: s["narration"].update(voice=a.voice))
 
@@ -213,7 +211,9 @@ def main(argv: list[str] | None = None) -> int:
     m.add_argument("source", help="arXiv id or link, or a PDF path")
     m.add_argument("--agent", default="auto", choices=["auto", "claude", "codex", "none"])
     m.add_argument("--model", default="")
-    m.add_argument("--seconds", type=int, default=45, help="target narration length, 20 to 600")
+    m.add_argument("--seconds", type=int, default=45, help="target narration length, 10 to 600")
+    m.add_argument("--pace", default="standard", choices=["standard", "fast", "reel"], help="fast and reel give shorter lines, tighter cuts and quicker animation")
+    m.add_argument("--review", type=int, default=0, metavar="ROUNDS", help="let the agent review a draft and fix problems, up to this many rounds (0 to 8, 0 is off, 8 is until satisfied)")
     m.add_argument("--detail", default="balanced", choices=["overview", "balanced", "deep"])
     m.add_argument("--format", action="append", default=None, choices=["Vertical", "Landscape", "Square"])
     m.add_argument("--look", action="append", default=None, help="repeat to render several looks", choices=["auto", "studio", "night", "swiss", "cobalt"])
