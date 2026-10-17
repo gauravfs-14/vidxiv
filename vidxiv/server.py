@@ -322,6 +322,8 @@ class RenderBody(BaseModel):
     look: str | None = None
     looks: list[str] | None = None
     music: str | None = None
+    pace: str | None = None
+    reviewRounds: int | None = None
 
 
 @app.post("/api/jobs/{job_id}/render")
@@ -334,6 +336,10 @@ def make_render(job_id: str, body: RenderBody | None = None):
         if "look" in patch and "looks" not in patch:
             patch["looks"] = [patch.pop("look")]
         patch.pop("look", None)
+        if "pace" in patch and patch["pace"] not in config.PACES:
+            raise ValueError("Pace must be one of: " + ", ".join(config.PACES))
+        if "reviewRounds" in patch:
+            patch["reviewRounds"] = max(0, min(config.REVIEW_MAX, patch["reviewRounds"]))
         if "looks" in patch:
             bad = [x for x in patch["looks"] if x != "auto" and x not in schema.LOOKS]
             if bad or not patch["looks"]:

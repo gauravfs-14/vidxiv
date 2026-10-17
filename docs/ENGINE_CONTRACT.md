@@ -23,6 +23,10 @@ All file references in props are paths relative to that public dir, used with `s
   "total": 1800,                       // total frames; Composition durationInFrames comes from this via calculateMetadata
   "title": "Paper title",
   "look": "studio",                    // "studio" | "night" | "swiss" | "cobalt", see skills/video-taste/SKILL.md
+  "pace": {"name": "reel", "speed": 2.0, "words": 3, "pre": 4, "overlap": 5},
+                                       // speed divides every animation length (1 = standard). words caps caption chunks (null keeps the layout default).
+                                       // pre and overlap are the frames the scenes already use; the engine only needs them to rebuild `scenes` when it is missing.
+                                       // Optional: missing means standard.
   "captions": true,                    // word-synced captions on or off
   "progressBar": true,
   "music": {"file": "audio/music.wav", "volume": 0.5} | null,
@@ -44,7 +48,7 @@ All file references in props are paths relative to that public dir, used with `s
       "gapAfter": 14
     }
   ],
-  "scenes": [{"from": 0, "dur": 130}]  // one per line, computed by Python: scene i starts 10 frames before line i, and overlaps the next by 12
+  "scenes": [{"from": 0, "dur": 130}]  // one per line, computed by Python: scene i starts `pace.pre` frames before line i (10 at standard), and overlaps the next by `pace.overlap` (12)
 }
 ```
 

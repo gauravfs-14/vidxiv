@@ -7,8 +7,18 @@ import {norm} from './timeline';
 
 export const clamp = {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'} as const;
 export const easeOut = Easing.bezier(...EASE_OUT);
+/**
+ * Animation speed from the video's pace. Set once per render by <Video>; every ease length is divided by it, so a reel
+ * plays the same reveals in a fraction of the frames. Delays (`a`) are cue times from the narration and are not scaled.
+ */
+let paceSpeed = 1;
+export const setPaceSpeed = (v: number) => {
+  paceSpeed = v > 0 ? v : 1;
+};
+/** A length in frames at the current pace. */
+export const paceLen = (len: number) => Math.max(1, len / paceSpeed);
 /** 0..1 progress between two scene-local frames, eased out. */
-export const prog = (frame: number, a: number, len = 16) => interpolate(frame, [a, a + len], [0, 1], {...clamp, easing: easeOut});
+export const prog = (frame: number, a: number, len = 16) => interpolate(frame, [a, a + paceLen(len)], [0, 1], {...clamp, easing: easeOut});
 
 /** Eased 0..1 progress starting at scene-local frame `delay`. Ease out, no overshoot. */
 export const useEnter = (delay = 0, len = 16) => prog(useCurrentFrame(), delay, len);
@@ -53,7 +63,8 @@ export const SceneShell: React.FC<{dur: number; children: React.ReactNode; isLas
   const frame = useCurrentFrame();
   const {u} = useLayout();
   const inP = prog(frame, 0, 10);
-  const outP = isLast ? 0 : interpolate(frame, [dur - 8, dur], [0, 1], {...clamp, easing: Easing.in(Easing.quad)});
+  const outLen = Math.max(2, Math.round(8 / paceSpeed));
+  const outP = isLast ? 0 : interpolate(frame, [dur - outLen, dur], [0, 1], {...clamp, easing: Easing.in(Easing.quad)});
   return <AbsoluteFill style={{opacity: inP * (1 - outP), translate: `0px ${(1 - inP) * 16 * u}px`}}>{children}</AbsoluteFill>;
 };
 
@@ -121,8 +132,9 @@ type Chunk = {line: number; start: number; end: number; words: CWord[]};
 export const Captions: React.FC = () => {
   const frame = useCurrentFrame();
   const {caption, u} = useLayout();
-  const {lines, fps} = useVideo();
+  const {lines, fps, pace} = useVideo();
   const {C, sans, dw, solid, color, onColor, r, rgba} = useTheme();
+  const maxWords = Math.min(caption.maxWords, pace.words ?? caption.maxWords);
   const chunks = useMemo(() => {
     const out: Chunk[] = [];
     lines.forEach((l, li) => {
@@ -135,7 +147,7 @@ export const Captions: React.FC = () => {
       (l.words ?? []).forEach((w) => {
         const hit = hl.find(([k]) => norm(k) === norm(w.w));
         cur.push({w: w.w, f: l.from + Math.round((w.s ?? 0) * fps), tint: hit ? hit[1] || 'accent' : undefined});
-        if (/[,.?!:;…]$/.test(w.w) || cur.length >= caption.maxWords) flush();
+        if (/[,.?!:;…]$/.test(w.w) || cur.length >= maxWords) flush();
       });
       flush();
     });
@@ -144,7 +156,7 @@ export const Captions: React.FC = () => {
       c.end = next && next.line === c.line ? next.start : lines[c.line].from + lines[c.line].dur + 8;
     });
     return out;
-  }, [lines, fps, caption.maxWords]);
+  }, [lines, fps, maxWords]);
   const chunk = chunks.find((c) => frame >= c.start - 2 && frame < c.end);
   if (!chunk) return null;
   const exit = interpolate(frame, [chunk.end - 5, chunk.end], [1, 0], clamp);

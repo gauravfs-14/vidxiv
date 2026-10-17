@@ -2,8 +2,8 @@ import React, {useMemo} from 'react';
 import {AbsoluteFill, Sequence, interpolate, staticFile} from 'remotion';
 import {Audio} from '@remotion/media';
 import {ThemeContext, makeTheme, resolveLook} from './theme';
-import {Background, Captions, ProgressLine, SceneShell} from './components';
-import {EMPTY_PROPS, SceneContext, VideoContext} from './context';
+import {Background, Captions, ProgressLine, SceneShell, setPaceSpeed} from './components';
+import {EMPTY_PROPS, STANDARD_PACE, SceneContext, VideoContext} from './context';
 import {SceneView} from './scenes';
 import {sfxPlan} from './sfx';
 import type {LineProps, VideoProps} from './types';
@@ -12,20 +12,23 @@ import type {LineProps, VideoProps} from './types';
 export const normalizeProps = (p: Partial<VideoProps> | undefined): VideoProps => {
   const q = {...EMPTY_PROPS, ...(p ?? {})} as VideoProps;
   const fps = q.fps > 0 ? q.fps : 30;
+  const pace = {...STANDARD_PACE, ...(q.pace ?? {})};
+  pace.speed = pace.speed > 0 ? Math.min(4, pace.speed) : 1;
   const lines: LineProps[] = (Array.isArray(q.lines) ? q.lines : []).map((l, i) => ({...l, index: i, words: Array.isArray(l.words) ? l.words : [], from: l.from ?? 0, dur: Math.max(1, l.dur ?? 30), file: l.file ?? null}));
   const scenes = lines.map((l, i) => {
     const given = q.scenes?.[i];
     if (given && Number.isFinite(given.from) && given.dur > 0) return given;
-    const from = i === 0 ? 0 : l.from - 10;
-    const next = lines[i + 1] ? lines[i + 1].from - 10 + 12 : (q.total || l.from + l.dur + 90);
+    const from = i === 0 ? 0 : l.from - pace.pre;
+    const next = lines[i + 1] ? lines[i + 1].from - pace.pre + pace.overlap : (q.total || l.from + l.dur + 90);
     return {from, dur: Math.max(20, next - from)};
   });
   const look = resolveLook(p?.look ?? p?.palette);
-  return {...q, look, fps, lines, scenes, figures: q.figures ?? {}, sfx: Array.isArray(q.sfx) ? q.sfx : [], total: q.total > 0 ? q.total : Math.max(60, ...lines.map((l) => l.from + l.dur + 60))};
+  return {...q, look, fps, pace, lines, scenes, figures: q.figures ?? {}, sfx: Array.isArray(q.sfx) ? q.sfx : [], total: q.total > 0 ? q.total : Math.max(60, ...lines.map((l) => l.from + l.dur + 60))};
 };
 
 export const Video: React.FC<Partial<VideoProps>> = (raw) => {
   const props = useMemo(() => normalizeProps(raw), [raw]);
+  setPaceSpeed(props.pace.speed); // before any scene renders, so every prog() in this frame uses this video's speed
   const theme = useMemo(() => makeTheme(props.look), [props.look]);
   const sfx = useMemo(() => sfxPlan(props), [props]);
   const {lines, scenes, fps, total} = props;

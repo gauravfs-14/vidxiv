@@ -110,3 +110,65 @@ def test_split_by_marks_uses_last_attempt_and_reports_missing(tmp_path):
     assert res["matched"] == [0, 1, 2] and res["missing"] == [3]
     d1 = sf.info(tmp_path / "narration" / "user" / "line-1.wav").duration
     assert 3.0 < d1 < 3.4  # the redo (5s to 8s), not the first attempt (3s to 5s)
+
+
+# ---------------------------------------------------------------- pace and review
+
+def test_pace_changes_line_count_and_falls_back():
+    from vidxiv import config
+
+    slow = config.target({"seconds": 60, "pace": "standard"})[1]
+    reel = config.target({"seconds": 60, "pace": "reel"})[1]
+    assert int(reel.split()[2]) > int(slow.split()[2])
+    assert config.pace({"pace": "nonsense"})["name"] == "standard"
+    assert config.PACES["reel"]["speed"] > config.PACES["fast"]["speed"] > config.PACES["standard"]["speed"]
+
+
+def test_review_rounds_are_clamped():
+    from vidxiv import config
+
+    assert config.review_rounds({}) == 0
+    assert config.review_rounds({"reviewRounds": 99}) == config.REVIEW_MAX
+    assert config.review_rounds({"reviewRounds": "x"}) == 0
+
+
+def test_heard_ratio():
+    from vidxiv import review
+
+    assert review.heard_ratio("The model scores 28 BLEU.", ["the", "model", "scores", "28", "blue"]) == pytest.approx(0.8)
+    assert review.heard_ratio("", []) == 1.0
+    assert review.heard_ratio("a b c d", []) == 0.0
+
+
+def test_review_edits_cannot_change_text_or_line_count():
+    from vidxiv import pipeline
+
+    data = json.loads(EXAMPLE.read_text())
+    before = json.loads(EXAMPLE.read_text())
+    data["lines"][1]["text"] = "Something else entirely."
+    data["lines"][2]["text"] = "Reworded for the voice."
+    out, problems = pipeline._constrain(data, before, [2], {"fig-01"})
+    assert problems == []
+    assert out["lines"][1]["text"] == before["lines"][1]["text"]  # not allowed to change
+    assert out["lines"][2]["text"] == "Reworded for the voice."  # voice problem, allowed
+    data["lines"].pop()
+    _, problems = pipeline._constrain(data, before, [], {"fig-01"})
+    assert problems and "exactly" in problems[0]
+
+
+def test_build_props_uses_pace(tmp_path, monkeypatch):
+    from vidxiv import config, jobs, render
+
+    monkeypatch.setattr(config, "JOBS", tmp_path)
+    job = jobs.create({"type": "pdf"}, "t")
+    sb = json.loads(EXAMPLE.read_text())
+    job.storyboard_path.write_text(json.dumps(sb))
+    totals = {}
+    for name in ("standard", "reel"):
+        job.update(lambda s, n=name: s["brief"].update(pace=n))
+        props, _ = render.build_props(job, estimated_ok=True)
+        totals[name] = props["total"]
+        assert props["pace"]["name"] == name
+        assert props["lines"][0]["from"] == config.PACES[name]["lead"]
+        assert props["scenes"][1]["from"] == props["lines"][1]["from"] - config.PACES[name]["pre"]
+    assert totals["reel"] < totals["standard"] * 0.95  # estimates ignore the faster voice, so only pauses shrink here

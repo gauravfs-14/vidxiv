@@ -2,7 +2,7 @@ import React from 'react';
 import {interpolate, useCurrentFrame} from 'remotion';
 import {useTheme} from './theme';
 import {useLayout} from './layout';
-import {clamp, easeOut, prog} from './components';
+import {clamp, easeOut, paceLen, prog} from './components';
 
 /* Crisp annotations. Every mark is a straight bar, a clean block or a drawn rectangle: nothing is hand-drawn. */
 
@@ -69,7 +69,7 @@ export const Headline: React.FC<{tokens: string[]; times: number[]; size: number
   return (
     <div style={{fontFamily: sans, fontWeight: weight ?? dw, fontSize: size, lineHeight: lineHeight ?? dl, letterSpacing: `${tracking ?? dt}em`, color: color ?? C.ink, textAlign: align, textWrap: 'balance', ...style}}>
       {tokens.map((t, i) => {
-        const p = interpolate(frame, [times[i] ?? 0, (times[i] ?? 0) + 14], [0, 1], {...clamp, easing: easeOut});
+        const p = interpolate(frame, [times[i] ?? 0, (times[i] ?? 0) + paceLen(14)], [0, 1], {...clamp, easing: easeOut});
         const m = marks[i];
         const mp = m ? prog(frame, m.at ?? (times[i] ?? 0) + 8, 16) : 0;
         const word = (

@@ -741,3 +741,8 @@ dialog.modal.studio { width: min(900px, calc(100vw - 32px)); }
 .studio-auto { display: flex; align-items: center; gap: 8px; margin-top: 14px; font-size: 13.5px; color: var(--text-2); cursor: pointer; }
 .studio-keys { margin: 10px 0 0; font-size: 12.5px; color: var(--text-3); }
 .studio-actions { margin-top: 14px; min-height: 40px; }
+.review-box { margin: 0 0 16px; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: var(--r); font-size: 13.5px; }
+.review-box > .disclosure > summary { align-items: flex-start; line-height: 1.45; color: var(--text); }
+.review-rounds { margin: 10px 0 0; padding-left: 18px; display: grid; gap: 8px; color: var(--text-2); }
+.review-issues { margin: 4px 0 0; padding-left: 16px; color: var(--text-3); font-size: 12.5px; }
+.out-qa { display: flex; gap: 4px; align-items: flex-start; margin: 4px 0 0; font-size: 12.5px; color: var(--warn); }

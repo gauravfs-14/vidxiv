@@ -282,6 +282,25 @@ def text_hash(text: str) -> str:
     return _h(script.clean(text))
 
 
+def tts_speed(job: Job, cfg: dict) -> float:
+    """Voice speed for synthetic clips: the voice setting times the pace's multiplier, kept in a range the models handle well."""
+    from . import config
+
+    return round(min(1.35, float(cfg["speed"]) * config.pace(job.load()["brief"])["voice"]), 3)
+
+
+def is_fresh(job: Job, i: int, text: str) -> bool:
+    """True when line i has a clip that matches its text (and, for synthetic clips, the current voice, speed and pace)."""
+    state = job.load()
+    rec = state["narration"]["clips"].get(str(i), {})
+    if rec.get("thash") != text_hash(text) or not line_wav(job, i).exists():
+        return False
+    if rec.get("source") == "tts":
+        cfg = state["narration"]
+        return rec.get("ahash") == _h("tts", cfg["engine"], cfg["voice"], tts_speed(job, cfg), script.clean(text))
+    return True
+
+
 def build_line(job: Job, i: int, text: str, cfg: dict, log=print) -> dict:
     """Make sure line i has a processed clip and word times for `text`. Returns the clip record."""
     text = script.clean(text)
@@ -303,12 +322,13 @@ def build_line(job: Job, i: int, text: str, cfg: dict, log=print) -> dict:
         else:
             words = align(dst, text, dur)
         return {"source": "user", "ahash": ah, "thash": th, "duration": round(dur, 3), "words": words}
-    ah = _h("tts", cfg["engine"], cfg["voice"], cfg["speed"], text)
+    speed = tts_speed(job, cfg)
+    ah = _h("tts", cfg["engine"], cfg["voice"], speed, text)
     if old.get("source") == "tts" and old.get("ahash") == ah and dst.exists() and old.get("words"):
         return old
     with tempfile.TemporaryDirectory() as d:
         raw = Path(d) / "raw.wav"
-        used = synthesize(text, cfg["engine"], cfg["voice"], float(cfg["speed"]), raw, log)
+        used = synthesize(text, cfg["engine"], cfg["voice"], speed, raw, log)
         dur = process_clip(raw, dst, user=False)
     return {"source": "tts", "engine": used, "ahash": ah, "thash": th, "duration": round(dur, 3), "words": align(dst, text, dur)}
 

@@ -46,6 +46,11 @@ lists the rest. Repeat until it prints `OK`. Rewrite any line it flags with a st
 7. **Highlight** one to three words per line that carry the meaning (`highlight`). Use the same tint for the same concept across the video.
 8. **Validate and fix.** Then reread the whole narration aloud in your head, as the viewer hears it, and cut anything that sounds like marketing.
 
+## Pace
+
+`brief.json` has `pace` (`standard`, `fast` or `reel`) and `paceGuide`. Follow `paceGuide`. It overrides the line length (8 to 26 words) and the 4 to 6 seconds per line below.
+`fast` and `reel` mean shorter lines, a different visual on almost every line, and less on-screen text. For `reel`, line 1 is the hook, spoken in the first two seconds, and the video is made for a phone: a few big words per scene, no dense figures unless you zoom to one panel.
+
 ## Rules that matter
 
 - **Facts come from the paper.** Every number, name and claim must be in `paper.md` or the abstract. Copy numbers exactly. Do not round a result into a better one.
@@ -58,7 +63,7 @@ lists the rest. Repeat until it prints `OK`. Rewrite any line it flags with a st
 - **Variety.** No more than two scenes of the same type in a row. `concept` is the fallback, not the default.
 - **Spoken form.** Write for text to speech. Spell out symbols and units the way a person says them: "8 attention heads", "about 28 BLEU", "N squared".
   No LaTeX, no parentheses with citations, no URLs in narration, no abbreviations a voice would mangle (spell "e.g." as "for example").
-- **Length and detail.** Hit `targetLines` and about `targetSeconds` (a line is about 4 to 6 seconds). Cut words before adding lines. `detail` says how deep to go: more detail means more mechanism, more evidence and more caveats, never longer sentences.
+- **Length and detail.** Hit `targetLines` and about `targetSeconds` (a line is about 4 to 6 seconds at the standard pace, see Pace). Cut words before adding lines. `detail` says how deep to go: more detail means more mechanism, more evidence and more caveats, never longer sentences.
 - **Look.** If `brief.json` has a `look` other than `auto`, copy it into `look`. If it is `auto`, choose one using `video-taste` section 1 and set `look`. Never default to cream and terracotta.
 - **Kickers are rare.** At most one line in three has a `kicker`, none on the title and outro.
 

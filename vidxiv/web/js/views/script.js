@@ -5,6 +5,7 @@ import { installHelp, progressBar, LogFeed, segmented, field as fieldEl, toast, 
 import { recordClip } from "../recorder.js";
 import { StoryboardEditor } from "./storyboard.js";
 import { SCENES } from "../scenes.js";
+import { PACES, paceOf } from "../pace.js";
 
 const MODES = [
   { value: "generate", label: "Write with an agent" },
@@ -21,8 +22,7 @@ const DETAILS = [
   { value: "balanced", label: "Balanced", help: "Problem, idea, method, main result and one limit." },
   { value: "deep", label: "Deep", help: "Step by step method, key equation, ablations, baselines and limits. For technical viewers." },
 ];
-const MIN_SECONDS = 20, MAX_SECONDS = 600, WARN_SECONDS = 300, STRONG_SECONDS = 480;
-const SECONDS_PER_LINE = 5;
+const MIN_SECONDS = 10, MAX_SECONDS = 600, WARN_SECONDS = 300, STRONG_SECONDS = 480;
 
 /** 90 becomes "1 min 30 s". */
 export function fmtSeconds(s) {
@@ -42,7 +42,7 @@ export function installEngineHint() {
 }
 
 export function createScript({ store, sec }) {
-  const state = { mode: "generate", seconds: 45, custom: false, detail: "balanced", agent: "auto", model: "", instructions: "", text: "", file: null, init: false, armed: false };
+  const state = { mode: "generate", seconds: 45, custom: false, detail: "balanced", pace: "standard", agent: "auto", model: "", instructions: "", text: "", file: null, init: false, armed: false };
   const editor = new StoryboardEditor({ store });
   sec.onShow(() => editor.refit());
 
@@ -67,6 +67,9 @@ export function createScript({ store, sec }) {
   const detailSeg = segmented("detail", DETAILS, state.detail, (v) => { state.detail = v; paintDuration(); }, "How much detail");
   const detailHelp = h("p.hint");
 
+  const paceSeg = segmented("pace", PACES.map((p) => ({ value: p.value, label: p.label, sub: p.sub })), state.pace, (v) => { state.pace = v; paintDuration(); }, "Pace");
+  const paceHelp = h("p.hint");
+
   const notes = h("textarea", { rows: 2, placeholder: "Focus on the method. Skip the related work.", oninput: () => { state.instructions = notes.value; autosize(notes); } });
   const agentSel = h("select", { onchange: () => { state.agent = agentSel.value; state.armed = false; paintAgent(); paintDuration(); } });
   const agentHint = h("p.hint");
@@ -87,6 +90,7 @@ export function createScript({ store, sec }) {
   const paneAgent = h("div.pane-fields",
     h("div.field", h("span.label-like", "Length"), durSeg, customRow, lineHint, lengthWarn),
     h("div.field", h("span.label-like", "Detail"), detailSeg, detailHelp),
+    h("div.field", h("span.label-like", "Pace"), paceSeg, paceHelp),
     fieldEl("Notes for the agent", notes, "Optional. What to focus on or leave out."));
   const paneText = h("div.pane-fields", fieldEl("Narration script", text, "The agent only picks scenes. Long text is split into lines of one or two sentences."));
   const paneRec = h("div.pane-fields",
@@ -113,7 +117,7 @@ export function createScript({ store, sec }) {
   sec.actions.append(toggleGen);
   let genOpen = false;
 
-  const linesNeeded = () => Math.max(1, Math.round(state.seconds / SECONDS_PER_LINE));
+  const linesNeeded = () => Math.max(1, Math.round(state.seconds / paceOf(state.pace).lineSeconds));
   const usesAgent = () => state.mode === "generate" && state.agent !== "none";
 
   function paintDuration() {
@@ -127,6 +131,8 @@ export function createScript({ store, sec }) {
     lineHint.textContent = `${fmtSeconds(state.seconds)} is about ${linesNeeded()} narration lines.`;
     detailSeg.set(state.detail);
     detailHelp.textContent = DETAILS.find((d) => d.value === state.detail)?.help || "";
+    paceSeg.set(state.pace);
+    paceHelp.textContent = paceOf(state.pace).help + " The same setting controls animation speed and pauses when you render.";
     const n = linesNeeded();
     const warn = usesAgent() && state.seconds > WARN_SECONDS;
     const strong = usesAgent() && state.seconds > STRONG_SECONDS;
@@ -210,7 +216,7 @@ export function createScript({ store, sec }) {
     }
     runBtn.disabled = true;
     try {
-      await api.putBrief(store.id, { seconds: state.seconds, detail: state.detail, instructions: state.instructions });
+      await api.putBrief(store.id, { seconds: state.seconds, detail: state.detail, pace: state.pace, instructions: state.instructions });
       if (state.mode === "transcript") await api.uploadTake(store.id, state.file, "transcribe");
       const view = await api.makeScript(store.id, { agent: state.agent, model: state.model, mode: state.mode, text: state.text });
       store.apply(view);
@@ -294,6 +300,7 @@ export function createScript({ store, sec }) {
       state.seconds = Number.isFinite(b.seconds) ? Math.max(MIN_SECONDS, Math.min(MAX_SECONDS, Math.round(b.seconds))) : 45;
       state.custom = !presetFor(state.seconds);
       state.detail = DETAILS.some((d) => d.value === b.detail) ? b.detail : "balanced";
+      state.pace = paceOf(b.pace).value;
       state.instructions = b.instructions || "";
       state.text = b.providedText || "";
       state.model = b.model || "";
